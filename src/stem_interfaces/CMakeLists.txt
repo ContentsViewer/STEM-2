@@ -38,6 +38,7 @@ find_package(rosidl_default_generators REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/BalloonSensorData.msg"
   "msg/GeneralSensorData.msg"
+  "msg/SuperviseSignal.msg"
 )
 
 

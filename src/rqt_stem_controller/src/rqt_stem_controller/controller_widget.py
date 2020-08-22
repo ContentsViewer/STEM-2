@@ -22,9 +22,7 @@ class ControllerWidget(QWidget):
 
         self.state_name_combo_box.setEditable(True)
         self.state_name_remove_button.setIcon(QIcon.fromTheme('list-remove'))
-        self.state2widgets_mapper = {}
-        self.add_state('item')
-        self.add_state('item')
+        self.state_name_remove_button.clicked.connect(self.remove_current_state)
 
     def supervise_button_pressed(self):
         self.is_pressed_supervise_button = True
@@ -32,30 +30,7 @@ class ControllerWidget(QWidget):
     def supervise_button_released(self):
         self.is_pressed_supervise_button = False
 
-    def add_state(self, state_name):
-        if state_name in self.state2widgets_mapper:
-            return
-        
-        item = QListWidgetItem(state_name)
-        self.state2widgets_mapper[state_name] = item
-        self.state_list_widget.addItem(item)
-    
-    def remove_state(self, state_name):
-        if not state_name in self.state2widgets_mapper:
-            return
-        
-        self.state_list_widget.removeItemWidget(self.state2widgets_mapper[state_name])
-        self.state2widgets_mapper.pop(state_name)
-
-    # def keyPressEvent(self, e):
-
-    #     # # エスケープキーを押すと画面が閉じる
-    #     # if e.key() == Qt.Key_Escape:
-    #     #     self._widget.shutdown()
-        
-    #     print(e.key())
-    #     self.supervised_state_name = e.key()
-        
-    # def keyReleaseEvent(self, e):
-    #     print('RELEAASS')
-    #     self.supervised_state_name = 'RELEAASE'
+    def remove_current_state(self):
+        current_index = self.state_name_combo_box.currentIndex()
+        self.state_name_combo_box.removeItem(current_index)
+        self.state_name_combo_box.clearEditText()

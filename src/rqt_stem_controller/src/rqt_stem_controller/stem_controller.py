@@ -4,7 +4,7 @@ from rqt_gui_py.plugin import Plugin
 from .controller_widget import ControllerWidget
 
 from rclpy.qos import QoSProfile
-from std_msgs.msg import String
+from stem_interfaces.msg import SuperviseSignal
 
 class STEMController(Plugin):
     def __init__(self, context):
@@ -22,16 +22,23 @@ class STEMController(Plugin):
         
         self._context.add_widget(self._widget)
 
-        self._publisher = self._node.create_publisher(String, 'supervised_state_name', qos_profile=QoSProfile(depth=10))
-        self._timer = self._node.create_timer(1.0, self.timer_callback)
+        self._publisher = self._node.create_publisher(SuperviseSignal, 'supervise_signal', qos_profile=QoSProfile(depth=10))
+        self._timer = self._node.create_timer(0.02, self.timer_callback)
 
-        self.state_list = ['not_touched', 'touched']
-
-        for state in self.state_list:
-            pass
     
     def timer_callback(self):
-        print('test')
+
+        if self._widget.is_pressed_supervise_button:
+            supervised_state_name = self._widget.state_name_combo_box.currentText()
+            if supervised_state_name == '':
+                return
+
+            supervise_signal = SuperviseSignal()
+            supervise_signal.supervised_state_name = supervised_state_name
+            self._publisher.publish(supervise_signal)
+            self._widget.supervised_state_label.setText(supervised_state_name)
+        else:
+            self._widget.supervised_state_label.setText('NONE')
 
     def save_settings(self, plugin_settings, instance_settings):
         pass

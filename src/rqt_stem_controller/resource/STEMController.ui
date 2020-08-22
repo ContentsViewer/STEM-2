@@ -21,7 +21,7 @@
        <item>
         <widget class="QLabel" name="label_3">
          <property name="text">
-          <string>Supervised State Name</string>
+          <string>State Name</string>
          </property>
         </widget>
        </item>
@@ -81,7 +81,7 @@
     </layout>
    </item>
    <item>
-    <widget class="QLabel" name="supervised_state_name">
+    <widget class="QLabel" name="supervised_state_label">
      <property name="font">
       <font>
        <pointsize>21</pointsize>
