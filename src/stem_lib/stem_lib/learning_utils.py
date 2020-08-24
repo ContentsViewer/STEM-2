@@ -1,12 +1,15 @@
-import tensorflow as tf
-import numpy as np
-import threading
-import queue
 import time
+import queue
+import threading
+import numpy as np
+import tensorflow as tf
 from itertools import product
-from .stdlib.collections import dotdict
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
+
+from .stdlib.collections import dotdict
+from .models import lstm
+from .layers import duplicate
 
 
 def triplet_loss(alpha=0.2):
@@ -63,8 +66,22 @@ def select_triplets(anchor_embedding, positive_embeddings, negative_embeddings, 
     np.random.shuffle(triplets)
     return triplets
 
-def make_model():
-    pass
+def make_model(sensor_data_queue_size, sensor_data_segment_count):
+    inputs = tf.keras.Input(
+        shape=(sensor_data_queue_size, sensor_data_segment_count),
+        batch_size=None
+    )
+    base_model = lstm.Model()
+    x = base_model(inputs)
+    outputs = duplicate.Layer()(x)
+    model = tf.keras.Model(inputs, outputs)
+    model.compile(loss=triplet_loss(), optimizer='adam')
+    
+    base_model.summary()
+    model.summary()
+
+    return model
+
 
 class Estimator():
     def __init__(self, model=None, precedents_dict=None):

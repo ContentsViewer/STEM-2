@@ -1,3 +1,5 @@
+import os
+from collections import deque
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile
@@ -5,14 +7,17 @@ from rclpy.qos import QoSProfile
 from stem_interfaces.msg import GeneralSensorData
 from stem_interfaces.msg import SuperviseSignal
 
-import os
-from collections import deque
 from stem_lib.stdlib import runtime_resources
 from stem_lib import utils as stem_utils
+from stem_lib import learning_utils
 
 class STEM(Node):
     def __init__(self):
         super().__init__('stem')
+
+        sensor_data_queue_size = stem_utils.load_parameter(self, "sensor_data_queue_size", 100)
+        state_name_list = stem_utils.load_parameter(self, "state_name_list", ["touched", "not_touched"])
+        print(state_name_list)
         self.sensor_receiver = self.create_subscription(
             GeneralSensorData,
             'general_sensor_data',
@@ -27,7 +32,8 @@ class STEM(Node):
             QoSProfile(depth=10)
         )
 
-        self.sensor_data_queue = deque(maxlen=100)
+        self.sensor_data_queue = deque(maxlen=sensor_data_queue_size)
+        self.model = learning_utils.make_model(sensor_data_queue_size, len(state_name_list))
 
         resources = runtime_resources.Resources('.stem/')
 
