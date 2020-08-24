@@ -5,7 +5,7 @@ from rclpy.qos import QoSPresetProfiles
 from stem_interfaces.msg import BalloonSensorData
 from stem_interfaces.msg import GeneralSensorData
 
-from sensor_driver.lib import sensor_utils
+from stem_libs import sensor_utils
 
 class BalloonSensorDriver(Node):
 

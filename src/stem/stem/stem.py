@@ -5,7 +5,7 @@ from rclpy.qos import QoSProfile
 from stem_interfaces.msg import GeneralSensorData
 from stem_interfaces.msg import SuperviseSignal
 
-import tensorflow as tf
+from collections import deque
 
 class STEM(Node):
     def __init__(self):
@@ -24,10 +24,12 @@ class STEM(Node):
             QoSProfile(depth=10)
         )
 
-        
+        self.sensor_data_queue = deque(maxlen=100)
+
     def on_receive_sensor_data(self, sensor_data):
         # self.get_logger().info(str(sensor_data.segments))
-        pass
+
+        self.sensor_data_queue.append(sensor_data.segments)
     
     def on_receiver_supervise_signal(self, supervise_signal):
         # self.get_logger().info(supervise_signal.supervised_state_name)
