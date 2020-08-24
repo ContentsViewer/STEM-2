@@ -1,3 +1,3 @@
-[submodule "src/stem_libs/stem_libs/stdlibs"]
-	path = src/stem_libs/stem_libs/stdlibs
+[submodule "src/stem_lib/stem_lib/stdlib"]
+	path = src/stem_lib/stem_lib/stdlib
 	url = https://github.com/ContentsViewer/Python-stdlib.git
