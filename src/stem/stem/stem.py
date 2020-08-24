@@ -5,7 +5,10 @@ from rclpy.qos import QoSProfile
 from stem_interfaces.msg import GeneralSensorData
 from stem_interfaces.msg import SuperviseSignal
 
+import os
 from collections import deque
+from stem_lib.stdlib import runtime_resources
+from stem_lib import utils as stem_utils
 
 class STEM(Node):
     def __init__(self):
@@ -25,6 +28,8 @@ class STEM(Node):
         )
 
         self.sensor_data_queue = deque(maxlen=100)
+
+        resources = runtime_resources.Resources('.stem/')
 
     def on_receive_sensor_data(self, sensor_data):
         # self.get_logger().info(str(sensor_data.segments))
