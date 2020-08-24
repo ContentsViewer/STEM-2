@@ -15,9 +15,10 @@ class STEM(Node):
     def __init__(self):
         super().__init__('stem')
 
-        sensor_data_queue_size = stem_utils.load_parameter(self, "sensor_data_queue_size", 100)
-        state_name_list = stem_utils.load_parameter(self, "state_name_list", ["touched", "not_touched"])
-        print(state_name_list)
+        self.sensor_data_queue_size = stem_utils.load_parameter(self, "sensor_data_queue_size", 100)
+        self.state_name_list = stem_utils.load_parameter(self, "state_name_list", ["touched", "not_touched"])
+        self.sensor_data_segment_count = stem_utils.load_parameter(self, "sensor_data_segment_count", 2)
+        
         self.sensor_receiver = self.create_subscription(
             GeneralSensorData,
             'general_sensor_data',
@@ -32,14 +33,17 @@ class STEM(Node):
             QoSProfile(depth=10)
         )
 
-        self.sensor_data_queue = deque(maxlen=sensor_data_queue_size)
-        self.model = learning_utils.make_model(sensor_data_queue_size, len(state_name_list))
+        self.sensor_data_queue = deque(maxlen=self.sensor_data_queue_size)
+        self.model = learning_utils.make_model(
+            self.sensor_data_queue_size, self.sensor_data_segment_count
+        )
 
         resources = runtime_resources.Resources('.stem/')
 
     def on_receive_sensor_data(self, sensor_data):
-        # self.get_logger().info(str(sensor_data.segments))
-
+        if len(sensor_data.segments) != self.sensor_data_segment_count:
+            self.get_logger().warning('sensor_data segment count is incompatible.')
+            return
         self.sensor_data_queue.append(sensor_data.segments)
     
     def on_receiver_supervise_signal(self, supervise_signal):
