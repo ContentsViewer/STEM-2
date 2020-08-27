@@ -8,6 +8,7 @@ from stem_interfaces.msg import GeneralSensorData
 from stem_interfaces.msg import SuperviseSignal
 
 from stem_lib.stdlib import runtime_resources
+from stem_lib.stdlib.bimapper import BiMapper
 from stem_lib import utils as stem_utils
 from stem_lib import learning_utils
 
@@ -39,6 +40,7 @@ class STEM(Node):
         )
 
         resources = runtime_resources.Resources('.stem/')
+
 
     def on_receive_sensor_data(self, sensor_data):
         if len(sensor_data.segments) != self.sensor_data_segment_count:

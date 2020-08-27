@@ -82,6 +82,9 @@ def make_model(sensor_data_queue_size, sensor_data_segment_count):
 
     return model
 
+class ReplayBuffer():
+    def __init__(self):
+        pass
 
 class Estimator():
     def __init__(self, model=None, precedents_dict=None):
