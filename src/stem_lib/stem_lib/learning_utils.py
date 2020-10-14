@@ -1,5 +1,6 @@
 import time
 import queue
+from collections import deque
 import threading
 import numpy as np
 import tensorflow as tf
@@ -8,6 +9,7 @@ from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 
 from .stdlib.collections import dotdict
+from .stdlib.bimapper import BiMapper
 from .models import lstm
 from .layers import duplicate
 
@@ -82,79 +84,162 @@ def make_model(sensor_data_queue_size, sensor_data_segment_count):
 
     return model
 
-class ReplayBuffer():
+
+class StateNameIndexBiMapper():
     def __init__(self):
-        pass
+        # x: name; y: index
+        self.bimapper = BiMapper()
+    
+    def get_name(self, index):
+        if index not in self.bimapper.y2x:
+            return None
+
+        return self.bimapper.y2x[index]
+    
+
+    def get_index(self, name):
+        if name not in self.bimapper.x2y:
+            self.bimapper.link(name, len(self.bimapper.y2x.keys()))
+        
+        return self.bimapper.x2y[name]
+        
+    def link(self, name, index):
+        self.bimapper.link(name, index)
+
+
+class ReplayBuffer():
+    def __init__(self, state_count, queue_maxlen):
+        self.state_count = state_count
+        self.feature_frames = [deque(maxlen=queue_maxlen) for _ in range(state_count + 1)]
+        self.embeddings = [deque(maxlen=queue_maxlen) for _ in range(state_count + 1)]
+
+    def append(self, state_major_index, feature_frame, embedding):
+        self.feature_frames[state_major_index].append(feature_frame)
+        self.embeddings[state_major_index].append(embedding)
+    
+    def get_feature_frames(self, condition=None):
+        return self._get_samples(self.feature_frames, condition)
+    
+    def get_embeddings(self, condition=None):
+        return self._get_samples(self.embeddings, condition)
+    
+    def _get_samples(self, source, condition=None):
+        """
+        condition : function
+            if you want to get positves
+            ```
+                lambda idx: idx == anchor_index
+            ```
+            or negatives
+            ```
+                lambda idx: idx != anchor_index
+            ```
+        """
+        samples = []
+        indices = []
+        for idx, queue in enumerate(source):
+            for ele in queue:
+                if condition is None or condition(idx):
+                    samples.append(ele)
+                    indices.append(idx)
+        return samples, indices
+    
+
+    def __iter__(self):
+        for frames in self.feature_frames:
+            for frame in frames:
+                yield frame
 
 class Estimator():
-    def __init__(self, model=None, precedents_dict=None):
-        self.is_running = False
-        self.results = queue.Queue()
+    def __init__(self, model, replay_buffer):
         self.model = model
-        self.inputs = None
-        self.precedents_dict = precedents_dict
-        self._prev_centers = None
+        self.replay_buffer = replay_buffer
 
-    def run(self, inputs=None, supervised_state_label=None):
-        if self.is_running:
+    def update_cluster_centers(self):
+        embeddings, _ = replay_buffer.get_embeddings()
+
+        if len(embeddings) < replay_buffer.state_count:
             return
-        self.is_running = True
-        self.inputs = inputs
-        self.supervised_state_label = supervised_state_label
-        self.worker_thread = threading.Thread(target=self.worker)
-        self.worker_thread.start()
+        
+        kmeans = KMeans(
+            n_clusters=replay_buffer.state_count
+        )
+        clustered_ids = kmeans.fit_predict(embeddings)
 
-    def worker(self):
-        [embedding], _ = self.model(self.inputs)
+    def estimate(self, feature_frame):
+        [embedding], _ = self.model([feature_frame])
 
-        result = dotdict({
-            'inputs': None,
-            'embedding': None,
-            'estimated_state': None,
-            'clustered': None,
-            'cluster_centers': None
-        })
-        n_states = len(self.precedents_dict) - 1
-        result.inputs = self.inputs
-        result.embedding = embedding
-        result.estimated_state = n_states  # not categorized state
-        result.supervised_state_label = self.supervised_state_label
 
-        embeddings = []
-        for precedents in self.precedents_dict:
-            embeddings.extend(
-                [precedent.embedding for precedent in precedents])
-        embeddings.append(embedding)
+        
+# class Estimator():
+#     def __init__(self, model=None, precedents_dict=None):
+#         self.is_running = False
+#         self.results = queue.Queue()
+#         self.model = model
+#         self.inputs = None
+#         self.precedents_dict = precedents_dict
+#         self._prev_centers = None
 
-        if len(embeddings) > n_states:
-            kmeans = KMeans(
-                n_clusters=n_states
-            )
+#     def run(self, inputs=None, supervised_state_label=None):
+#         if self.is_running:
+#             return
+#         self.is_running = True
+#         self.inputs = inputs
+#         self.supervised_state_label = supervised_state_label
+#         self.worker_thread = threading.Thread(target=self.worker)
+#         self.worker_thread.start()
 
-            result.clustered = kmeans.fit_predict(embeddings)
+#     def worker(self):
+#         [embedding], _ = self.model(self.inputs)
 
-            id_remap = [i for i in range(len(kmeans.cluster_centers_))]
+#         result = dotdict({
+#             'inputs': None,
+#             'embedding': None,
+#             'estimated_state': None,
+#             'clustered': None,
+#             'cluster_centers': None
+#         })
+#         n_states = len(self.precedents_dict) - 1
+#         result.inputs = self.inputs
+#         result.embedding = embedding
+#         result.estimated_state = n_states  # not categorized state
+#         result.supervised_state_label = self.supervised_state_label
 
-            if self._prev_centers is not None:
-                result.cluster_centers = [None] * len(kmeans.cluster_centers_)
-                pairs = nearest(kmeans.cluster_centers_, self._prev_centers)
+#         embeddings = []
+#         for precedents in self.precedents_dict:
+#             embeddings.extend(
+#                 [precedent.embedding for precedent in precedents])
+#         embeddings.append(embedding)
 
-                for ifrom, ito in pairs:
-                    id_remap[ifrom] = ito
-                    result.cluster_centers[ito] = kmeans.cluster_centers_[
-                        ifrom]
-            else:
-                result.cluster_centers = kmeans.cluster_centers_
+#         if len(embeddings) > n_states:
+#             kmeans = KMeans(
+#                 n_clusters=n_states
+#             )
 
-            self._prev_centers = result.cluster_centers
-            result.estimated_state = id_remap[result.clustered[-1]]
-            result.id_remap = id_remap
+#             result.clustered = kmeans.fit_predict(embeddings)
 
-            # print(result.clustered[-1])
-            # print(kmeans.cluster_centers_[0], kmeans.cluster_centers_[1])
+#             id_remap = [i for i in range(len(kmeans.cluster_centers_))]
 
-        self.results.put(result)
-        self.is_running = False
+#             if self._prev_centers is not None:
+#                 result.cluster_centers = [None] * len(kmeans.cluster_centers_)
+#                 pairs = nearest(kmeans.cluster_centers_, self._prev_centers)
+
+#                 for ifrom, ito in pairs:
+#                     id_remap[ifrom] = ito
+#                     result.cluster_centers[ito] = kmeans.cluster_centers_[
+#                         ifrom]
+#             else:
+#                 result.cluster_centers = kmeans.cluster_centers_
+
+#             self._prev_centers = result.cluster_centers
+#             result.estimated_state = id_remap[result.clustered[-1]]
+#             result.id_remap = id_remap
+
+#             # print(result.clustered[-1])
+#             # print(kmeans.cluster_centers_[0], kmeans.cluster_centers_[1])
+
+#         self.results.put(result)
+#         self.is_running = False
 
 
 class Trainor():

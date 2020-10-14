@@ -10,6 +10,7 @@ from stem_interfaces.msg import GeneralSensorData
 from stem_lib import sensor_utils
 from stem_lib import utils as stem_utils
 
+# import time
 
 class BalloonSensorDriver(Node):
 
@@ -40,7 +41,7 @@ class BalloonSensorDriver(Node):
         self.balloon_sensor_data_publisher.publish(balloon_sensor_data)
 
         general_sensor_data = GeneralSensorData()
-        general_sensor_data.segments = [ float(segment) for segment in segments] 
+        general_sensor_data.segments = [ float(segments[1]), float(segments[2]) ] 
         self.general_sensor_data_publisher.publish(general_sensor_data)
 
 

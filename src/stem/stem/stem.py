@@ -3,6 +3,7 @@ from collections import deque
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile
+import time
 
 from stem_interfaces.msg import GeneralSensorData
 from stem_interfaces.msg import SuperviseSignal
@@ -46,10 +47,13 @@ class STEM(Node):
         if len(sensor_data.segments) != self.sensor_data_segment_count:
             self.get_logger().warning('sensor_data segment count is incompatible.')
             return
+        
+        print(sensor_data.segments)
+        time.sleep(2)
         self.sensor_data_queue.append(sensor_data.segments)
     
     def on_receiver_supervise_signal(self, supervise_signal):
-        # self.get_logger().info(supervise_signal.supervised_state_name)
+        self.get_logger().info(supervise_signal.supervised_state_name)
         pass
 
 
