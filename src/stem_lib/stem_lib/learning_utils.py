@@ -85,6 +85,11 @@ def make_model(sensor_data_queue_size, sensor_data_segment_count):
     return model
 
 
+def cal_embedding(model, feature_frame):
+    [embedding], _ = model([feature_frame])
+    return embedding
+
+
 class StateNameIndexBiMapper():
     def __init__(self):
         # x: name; y: index
@@ -110,8 +115,9 @@ class StateNameIndexBiMapper():
 class ReplayBuffer():
     def __init__(self, state_count, queue_maxlen):
         self.state_count = state_count
-        self.feature_frames = [deque(maxlen=queue_maxlen) for _ in range(state_count + 1)]
-        self.embeddings = [deque(maxlen=queue_maxlen) for _ in range(state_count + 1)]
+        self.feature_frames = [deque(maxlen=queue_maxlen) for _ in range(state_count)]
+        self.embeddings = [deque(maxlen=queue_maxlen) for _ in range(state_count)]
+        
 
     def append(self, state_major_index, feature_frame, embedding):
         self.feature_frames[state_major_index].append(feature_frame)
@@ -145,15 +151,11 @@ class ReplayBuffer():
         return samples, indices
     
 
-    def __iter__(self):
-        for frames in self.feature_frames:
-            for frame in frames:
-                yield frame
-
-class Estimator():
+class StateClassifier():
     def __init__(self, model, replay_buffer):
         self.model = model
         self.replay_buffer = replay_buffer
+        self.cluster_centers = None
 
     def update_cluster_centers(self):
         embeddings, _ = replay_buffer.get_embeddings()
@@ -166,8 +168,17 @@ class Estimator():
         )
         clustered_ids = kmeans.fit_predict(embeddings)
 
-    def estimate(self, feature_frame):
-        [embedding], _ = self.model([feature_frame])
+        if self.cluster_centers is None:
+            self.cluster_centers = kmeans.cluster_centers_
+        else:
+            pairs = nearest(kmeans.cluster_centers_, self.cluster_centers)
+
+            for lindex, gindex in pairs:
+                self.cluster_centers[gindex] = kmeans.cluster_centers_[lindex]
+    
+    
+    def get_nearest_cluster_index(self, embedding):
+
 
 
         
