@@ -50,9 +50,12 @@ class STEM(Node):
         replay_buffer.append(0, [2]*10, [2]*128)
         print('OK2')
 
-        for index, frame, embedding in replay_buffer.iterate():
-            embedding = [2]*128
+        for index, frame, embedding in replay_buffer.popleft_each():
+            print('T', index, frame, embedding)
+            replay_buffer.append_back_buffer(index + 1, frame, embedding)
 
+        replay_buffer.swap_buffer()
+        
         for index, frame, embedding in replay_buffer.iterate():
             print(index, frame, embedding)
 

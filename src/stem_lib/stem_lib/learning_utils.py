@@ -118,14 +118,21 @@ class StateNameIndexBiMapper():
 class ReplayBuffer():
     def __init__(self, state_count, queue_maxlen):
         self.state_count = state_count
+        
         self.feature_frames = [deque(maxlen=queue_maxlen) for _ in range(state_count)]
+        self.feature_frames_back = [deque(maxlen=queue_maxlen) for _ in range(state_count)]
         self.embeddings = [deque(maxlen=queue_maxlen) for _ in range(state_count)]
+        self.embeddings_back = [deque(maxlen=queue_maxlen) for _ in range(state_count)]
         
 
     def append(self, state_major_index, feature_frame, embedding):
         self.feature_frames[state_major_index].append(feature_frame)
         self.embeddings[state_major_index].append(embedding)
     
+    def append_back_buffer(self, state_major_index, feature_frame, embedding):
+        self.feature_frames_back[state_major_index].append(feature_frame)
+        self.embeddings_back[state_major_index].append(embedding)
+
     def get_feature_frames(self, condition=None):
         return self._get_samples(self.feature_frames, condition)
     
@@ -137,9 +144,20 @@ class ReplayBuffer():
             for frame, embedding in zip(self.feature_frames[index], self.embeddings[index]):
                 yield index, frame, embedding
     
-    def pop_left_each(self):
-        pass
-    
+    def popleft_each(self):
+        for index in range(self.state_count):
+            while self.feature_frames[index] and self.embeddings[index]:
+                frame = self.feature_frames[index].popleft()
+                embedding = self.embeddings[index].popleft()
+                yield index, frame, embedding
+
+    def swap_buffer(self):
+        self.feature_frames, self.feature_frames_back = self.feature_frames_back, self.feature_frames
+        self.embeddings, self.embeddings_back = self.embeddings_back, self.embeddings
+        
+        self.feature_frames_back.clear()
+        self.embeddings_back.clear()
+
     def _get_samples(self, source, condition=None):
         """
         condition : function
