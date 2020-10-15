@@ -4,6 +4,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile
 import time
+import numpy as np
 
 from stem_interfaces.msg import GeneralSensorData
 from stem_interfaces.msg import SuperviseSignal
@@ -41,6 +42,20 @@ class STEM(Node):
         )
 
         resources = runtime_resources.Resources('.stem/')
+
+        print('OK')
+        replay_buffer = learning_utils.ReplayBuffer(3, 100)
+        replay_buffer.append(0, [0]*10, [0]*128)
+        replay_buffer.append(1, [1]*10, [1]*128)
+        replay_buffer.append(0, [2]*10, [2]*128)
+        print('OK2')
+
+        for index, frame, embedding in replay_buffer.iterate():
+            embedding = [2]*128
+
+        for index, frame, embedding in replay_buffer.iterate():
+            print(index, frame, embedding)
+
 
 
     def on_receive_sensor_data(self, sensor_data):

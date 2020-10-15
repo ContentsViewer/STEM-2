@@ -89,6 +89,9 @@ def cal_embedding(model, feature_frame):
     [embedding], _ = model([feature_frame])
     return embedding
 
+def recal_embeddings(model, replay_buffer):
+    pass
+
 
 class StateNameIndexBiMapper():
     def __init__(self):
@@ -128,6 +131,14 @@ class ReplayBuffer():
     
     def get_embeddings(self, condition=None):
         return self._get_samples(self.embeddings, condition)
+    
+    def iterate(self):
+        for index in range(self.state_count):
+            for frame, embedding in zip(self.feature_frames[index], self.embeddings[index]):
+                yield index, frame, embedding
+    
+    def pop_left_each(self):
+        pass
     
     def _get_samples(self, source, condition=None):
         """
@@ -178,8 +189,11 @@ class StateClassifier():
     
     
     def get_nearest_cluster_index(self, embedding):
+        l = [[np.linalg.norm(self.cluster_centers[i] - embedding), i] for i in range(len(self.cluster_centers))]
 
+        l.sort(key=lambda x: x[0])
 
+        return l[1]
 
         
 # class Estimator():
