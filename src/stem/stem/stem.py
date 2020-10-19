@@ -8,6 +8,7 @@ import numpy as np
 
 from stem_interfaces.msg import GeneralSensorData
 from stem_interfaces.msg import SuperviseSignal
+from stem_interfaces.msg import STEMStatus
 
 from stem_lib.stdlib import runtime_resources
 from stem_lib.stdlib.bimapper import BiMapper
@@ -17,6 +18,8 @@ from stem_lib import learning_utils
 class STEM(Node):
     def __init__(self):
         super().__init__('stem')
+
+        self.get_logger().info('STEM is awaken!')
 
         self.sensor_data_queue_size = stem_utils.load_parameter(self, "sensor_data_queue_size", 100)
         self.state_name_list = stem_utils.load_parameter(self, "state_name_list", ["touched", "not_touched"])
@@ -41,23 +44,25 @@ class STEM(Node):
             self.sensor_data_queue_size, self.sensor_data_segment_count
         )
 
+        self.replay_buffer = learning_utils.ReplayBuffer(len(self.state_name_list), 100)
+        self.warming_frames = []
         resources = runtime_resources.Resources('.stem/')
 
-        print('OK')
-        replay_buffer = learning_utils.ReplayBuffer(3, 100)
-        replay_buffer.append(0, [0]*10, [0]*128)
-        replay_buffer.append(1, [1]*10, [1]*128)
-        replay_buffer.append(0, [2]*10, [2]*128)
-        print('OK2')
+        self.get_logger().info('Initializing Completed.')
+        # replay_buffer = learning_utils.ReplayBuffer(3, 100)
+        # replay_buffer.append(0, [0]*10, [0]*128)
+        # replay_buffer.append(1, [1]*10, [1]*128)
+        # replay_buffer.append(0, [2]*10, [2]*128)
+        # print('OK2')
 
-        for index, frame, embedding in replay_buffer.popleft_each():
-            print('T', index, frame, embedding)
-            replay_buffer.append_back_buffer(index + 1, frame, embedding)
+        # for index, frame, embedding in replay_buffer.popleft_each():
+        #     print('T', index, frame, embedding)
+        #     replay_buffer.append_back_buffer(index + 1, frame, embedding)
 
-        replay_buffer.swap_buffer()
-        
-        for index, frame, embedding in replay_buffer.iterate():
-            print(index, frame, embedding)
+        # replay_buffer.swap_buffer()
+
+        # for index, frame, embedding in replay_buffer.iterate():
+        #     print(index, frame, embedding)
 
 
 
@@ -66,9 +71,18 @@ class STEM(Node):
             self.get_logger().warning('sensor_data segment count is incompatible.')
             return
         
-        print(sensor_data.segments)
-        time.sleep(2)
+        # print(sensor_data.segments)
+        # time.sleep(2)
         self.sensor_data_queue.append(sensor_data.segments)
+        if len(self.sensor_data_queue) == self.sensor_data_queue.maxlen:
+            
+            # print(a)
+            # try:
+            print(self.model(np.array([self.sensor_data_queue])))
+            # except e:
+            #     print('A: ')
+            #     print(e)
+            pass
     
     def on_receiver_supervise_signal(self, supervise_signal):
         self.get_logger().info(supervise_signal.supervised_state_name)

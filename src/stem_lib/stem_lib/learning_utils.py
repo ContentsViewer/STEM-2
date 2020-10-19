@@ -90,7 +90,17 @@ def cal_embedding(model, feature_frame):
     return embedding
 
 def recal_embeddings(model, replay_buffer):
-    pass
+    frames = []
+    indices = []
+    
+    for index, frame, embedding in replay_buffer.popleft_each():
+        indices.append(index)
+        frames.append(frame)
+    
+    embeddings, _ = model(np.array(frames))
+
+    for index, frame, embedding in zip(indices, frames, embeddings):
+        replay_buffer.append(index, frame, embedding)
 
 
 class StateNameIndexBiMapper():
@@ -107,12 +117,12 @@ class StateNameIndexBiMapper():
 
     def get_index(self, name):
         if name not in self.bimapper.x2y:
-            self.bimapper.link(name, len(self.bimapper.y2x.keys()))
+            return None
         
         return self.bimapper.x2y[name]
         
-    def link(self, name, index):
-        self.bimapper.link(name, index)
+    def bind(self, name, index):
+        self.bimapper.bind(name, index)
 
 
 class ReplayBuffer():
@@ -181,30 +191,34 @@ class ReplayBuffer():
     
 
 class StateClassifier():
-    def __init__(self, model, replay_buffer):
-        self.model = model
-        self.replay_buffer = replay_buffer
+    def __init__(self, state_count):
         self.cluster_centers = None
+        self.state_count = state_count
 
-    def update_cluster_centers(self):
-        embeddings, _ = replay_buffer.get_embeddings()
-
-        if len(embeddings) < replay_buffer.state_count:
-            return
+    def update_cluster_centers(self, embeddings):
+        if len(embeddings) < self.state_count:
+            return None
         
         kmeans = KMeans(
-            n_clusters=replay_buffer.state_count
+            n_clusters=self.state_count
         )
         clustered_ids = kmeans.fit_predict(embeddings)
 
         if self.cluster_centers is None:
             self.cluster_centers = kmeans.cluster_centers_
+
         else:
             pairs = nearest(kmeans.cluster_centers_, self.cluster_centers)
+            l2g = {}
 
             for lindex, gindex in pairs:
+                l2g[lindex] = gindex
                 self.cluster_centers[gindex] = kmeans.cluster_centers_[lindex]
-    
+
+            for i in range(len(clustered_ids)):
+                clustered_ids[i] = l2g[clustered_ids[i]]
+        
+        return clustered_ids
     
     def get_nearest_cluster_index(self, embedding):
         l = [[np.linalg.norm(self.cluster_centers[i] - embedding), i] for i in range(len(self.cluster_centers))]

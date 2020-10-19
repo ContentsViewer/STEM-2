@@ -39,6 +39,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/BalloonSensorData.msg"
   "msg/GeneralSensorData.msg"
   "msg/SuperviseSignal.msg"
+  "msg/STEMStatus.msg"
 )
 
 
