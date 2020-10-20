@@ -1,1 +1,1 @@
-string status
+int32 sensor_data_queue_length

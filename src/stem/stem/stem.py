@@ -19,11 +19,13 @@ class STEM(Node):
     def __init__(self):
         super().__init__('stem')
 
-        self.get_logger().info('STEM is awaken!')
+        self.get_logger().info('STEM is Awaken!')
 
-        self.sensor_data_queue_size = stem_utils.load_parameter(self, "sensor_data_queue_size", 100)
-        self.state_name_list = stem_utils.load_parameter(self, "state_name_list", ["touched", "not_touched"])
-        self.sensor_data_segment_count = stem_utils.load_parameter(self, "sensor_data_segment_count", 2)
+        self.sensor_data_queue_size = stem_utils.load_parameter(self, 'sensor_data_queue_size', 100)
+        self.state_name_list = stem_utils.load_parameter(self, 'state_name_list', ['touched', 'not_touched'])
+        self.sensor_data_segment_size = stem_utils.load_parameter(self, 'sensor_data_segment_size', 2)
+        self.replay_buffer_maxlen = stem_utils.load_parameter(self, 'replay_buffer_maxlen', 100)
+        self.nmin_samples_replay_buffer = stem_utils.load_parameter(self, 'nmin_samples_replay_buffer', 50)
         
         self.sensor_receiver = self.create_subscription(
             GeneralSensorData,
@@ -39,14 +41,26 @@ class STEM(Node):
             QoSProfile(depth=10)
         )
 
+        self.status_publisher = self.create_publisher(
+            STEMStatus,
+            'stem_status',
+            QoSProfile(depth=10))
+
+        self.status = {
+            'sensor_data_queue_length': 0
+        }
+
+        self.timer = self.create_timer(0.1, self.test)
+
         self.sensor_data_queue = deque(maxlen=self.sensor_data_queue_size)
         self.model = learning_utils.make_model(
-            self.sensor_data_queue_size, self.sensor_data_segment_count
+            self.sensor_data_queue_size, self.sensor_data_segment_size
         )
 
-        self.replay_buffer = learning_utils.ReplayBuffer(len(self.state_name_list), 100)
+        self.replay_buffer = learning_utils.ReplayBuffer(len(self.state_name_list), self.replay_buffer_maxlen)
         self.warming_frames = []
         resources = runtime_resources.Resources('.stem/')
+
 
         self.get_logger().info('Initializing Completed.')
         # replay_buffer = learning_utils.ReplayBuffer(3, 100)
@@ -64,16 +78,21 @@ class STEM(Node):
         # for index, frame, embedding in replay_buffer.iterate():
         #     print(index, frame, embedding)
 
-
+    def test(self):
+        pass
+        # status = {'is_sensor_queue_full': False}
+        # message = stem_utils.fill_message_from_dict(STEMStatus(), status)
+        # self.status_publisher.publish(message)
 
     def on_receive_sensor_data(self, sensor_data):
-        if len(sensor_data.segments) != self.sensor_data_segment_count:
-            self.get_logger().warning('sensor_data segment count is incompatible.')
+        if len(sensor_data.segments) != self.sensor_data_segment_size:
+            self.get_logger().warning('sensor_data segment size is incompatible.')
             return
         
         # print(sensor_data.segments)
         # time.sleep(2)
         self.sensor_data_queue.append(sensor_data.segments)
+        self.status['sensor_data_queue_length'] = len(self.sensor_data_queue)
         if len(self.sensor_data_queue) == self.sensor_data_queue.maxlen:
             
             # print(a)
@@ -83,7 +102,12 @@ class STEM(Node):
             #     print('A: ')
             #     print(e)
             pass
-    
+
+        self.publish_status()
+
+    def publish_status(self):
+        self.status_publisher.publish(stem_utils.fill_message_from_dict(STEMStatus(), self.status))
+
     def on_receiver_supervise_signal(self, supervise_signal):
         self.get_logger().info(supervise_signal.supervised_state_name)
         pass

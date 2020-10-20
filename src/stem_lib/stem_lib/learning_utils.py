@@ -68,9 +68,9 @@ def select_triplets(anchor_embedding, positive_embeddings, negative_embeddings, 
     np.random.shuffle(triplets)
     return triplets
 
-def make_model(sensor_data_queue_size, sensor_data_segment_count):
+def make_model(sensor_data_queue_size, sensor_data_segment_size):
     inputs = tf.keras.Input(
-        shape=(sensor_data_queue_size, sensor_data_segment_count),
+        shape=(sensor_data_queue_size, sensor_data_segment_size),
         batch_size=None
     )
     base_model = lstm.Model()
@@ -126,14 +126,16 @@ class StateNameIndexBiMapper():
 
 
 class ReplayBuffer():
-    def __init__(self, state_count, queue_maxlen):
-        self.state_count = state_count
+    def __init__(self, n_states, queue_maxlen):
+        self.n_states = n_states
         
-        self.feature_frames = [deque(maxlen=queue_maxlen) for _ in range(state_count)]
-        self.feature_frames_back = [deque(maxlen=queue_maxlen) for _ in range(state_count)]
-        self.embeddings = [deque(maxlen=queue_maxlen) for _ in range(state_count)]
-        self.embeddings_back = [deque(maxlen=queue_maxlen) for _ in range(state_count)]
-        
+        self.feature_frames = [deque(maxlen=queue_maxlen) for _ in range(n_states)]
+        self.feature_frames_back = [deque(maxlen=queue_maxlen) for _ in range(n_states)]
+        self.embeddings = [deque(maxlen=queue_maxlen) for _ in range(n_states)]
+        self.embeddings_back = [deque(maxlen=queue_maxlen) for _ in range(n_states)]
+    
+    def length(self):
+        return len(self.feature_frames)
 
     def append(self, state_major_index, feature_frame, embedding):
         self.feature_frames[state_major_index].append(feature_frame)
@@ -150,12 +152,12 @@ class ReplayBuffer():
         return self._get_samples(self.embeddings, condition)
     
     def iterate(self):
-        for index in range(self.state_count):
+        for index in range(self.n_states):
             for frame, embedding in zip(self.feature_frames[index], self.embeddings[index]):
                 yield index, frame, embedding
     
     def popleft_each(self):
-        for index in range(self.state_count):
+        for index in range(self.n_states):
             while self.feature_frames[index] and self.embeddings[index]:
                 frame = self.feature_frames[index].popleft()
                 embedding = self.embeddings[index].popleft()
@@ -191,16 +193,16 @@ class ReplayBuffer():
     
 
 class StateClassifier():
-    def __init__(self, state_count):
+    def __init__(self, n_states):
         self.cluster_centers = None
-        self.state_count = state_count
+        self.n_states = n_states
 
     def update_cluster_centers(self, embeddings):
-        if len(embeddings) < self.state_count:
+        if len(embeddings) < self.n_states:
             return None
         
         kmeans = KMeans(
-            n_clusters=self.state_count
+            n_clusters=self.n_states
         )
         clustered_ids = kmeans.fit_predict(embeddings)
 
