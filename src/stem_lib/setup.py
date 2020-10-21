@@ -11,6 +11,7 @@ setup(
         package_name+'/models',
         package_name+'/stdlib',
         package_name+'/stdlib/collections',
+        package_name+'/stdlib/threading',
     ],
     data_files=[
         ('share/ament_index/resource_index/packages',

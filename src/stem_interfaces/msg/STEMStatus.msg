@@ -1,1 +1,2 @@
 int32 sensor_data_queue_length
+int32 sensor_sampling_rate

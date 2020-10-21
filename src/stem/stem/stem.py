@@ -12,6 +12,8 @@ from stem_interfaces.msg import STEMStatus
 
 from stem_lib.stdlib import runtime_resources
 from stem_lib.stdlib.bimapper import BiMapper
+from stem_lib.stdlib.threading import ThreadWorker
+from stem_lib.stdlib.stopwatch import Stopwatch
 from stem_lib import utils as stem_utils
 from stem_lib import learning_utils
 
@@ -50,6 +52,8 @@ class STEM(Node):
             'sensor_data_queue_length': 0
         }
 
+        self.sensor_data_sampleing_sw = Stopwatch()
+
         self.timer = self.create_timer(0.1, self.test)
 
         self.sensor_data_queue = deque(maxlen=self.sensor_data_queue_size)
@@ -63,11 +67,14 @@ class STEM(Node):
 
 
         self.get_logger().info('Initializing Completed.')
-        # replay_buffer = learning_utils.ReplayBuffer(3, 100)
-        # replay_buffer.append(0, [0]*10, [0]*128)
-        # replay_buffer.append(1, [1]*10, [1]*128)
-        # replay_buffer.append(0, [2]*10, [2]*128)
-        # print('OK2')
+
+        # test_replay_buffer = learning_utils.ReplayBuffer(3, 100)
+        # test_replay_buffer.append(0, [0]*10, [0]*128)
+        # test_replay_buffer.append(1, [1]*10, [1]*128)
+        # test_replay_buffer.append(0, [2]*10, [2]*128)
+        # test_replay_buffer.append(2, [3]*10, [3]*128)
+
+        # self.get_logger().info(str(test_replay_buffer.length()))
 
         # for index, frame, embedding in replay_buffer.popleft_each():
         #     print('T', index, frame, embedding)
@@ -77,6 +84,9 @@ class STEM(Node):
 
         # for index, frame, embedding in replay_buffer.iterate():
         #     print(index, frame, embedding)
+
+    def start(self):
+        pass
 
     def test(self):
         pass
@@ -117,7 +127,7 @@ def main(args=None):
     rclpy.init(args=args)
 
     stem = STEM()
-
+    stem.start()
     rclpy.spin(stem)
 
     stem.destroy_node()

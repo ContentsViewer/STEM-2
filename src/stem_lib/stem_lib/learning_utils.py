@@ -135,7 +135,7 @@ class ReplayBuffer():
         self.embeddings_back = [deque(maxlen=queue_maxlen) for _ in range(n_states)]
     
     def length(self):
-        return len(self.feature_frames)
+        return sum([len(frame) for frame in self.feature_frames])
 
     def append(self, state_major_index, feature_frame, embedding):
         self.feature_frames[state_major_index].append(feature_frame)
