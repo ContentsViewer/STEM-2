@@ -49,7 +49,8 @@ class STEM(Node):
             QoSProfile(depth=10))
 
         self.status = {
-            'sensor_data_queue_length': 0
+            'sensor_data_queue_length': 0,
+            'sensor_sampling_rate': 0
         }
 
         self.sensor_data_sampleing_sw = Stopwatch()
@@ -86,7 +87,7 @@ class STEM(Node):
         #     print(index, frame, embedding)
 
     def start(self):
-        pass
+        self.sensor_data_sampleing_sw.start()
 
     def test(self):
         pass
@@ -103,6 +104,10 @@ class STEM(Node):
         # time.sleep(2)
         self.sensor_data_queue.append(sensor_data.segments)
         self.status['sensor_data_queue_length'] = len(self.sensor_data_queue)
+
+        self.status['sensor_sampling_rate'] = 1 / (self.sensor_data_sampleing_sw.elapsed + 1e-8)
+        self.sensor_data_sampleing_sw.restart()
+
         if len(self.sensor_data_queue) == self.sensor_data_queue.maxlen:
             
             # print(a)
