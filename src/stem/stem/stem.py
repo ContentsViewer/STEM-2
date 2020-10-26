@@ -6,6 +6,9 @@ from rclpy.qos import QoSProfile
 import time
 import numpy as np
 
+from sklearn.cluster import KMeans
+import pickle
+
 from stem_interfaces.msg import GeneralSensorData
 from stem_interfaces.msg import SuperviseSignal
 from stem_interfaces.msg import STEMStatus
@@ -55,7 +58,6 @@ class STEM(Node):
 
         self.sensor_data_sampleing_sw = Stopwatch()
 
-        self.timer = self.create_timer(0.1, self.test)
 
         self.sensor_data_queue = deque(maxlen=self.sensor_data_queue_size)
         self.model = learning_utils.make_model(
@@ -63,7 +65,11 @@ class STEM(Node):
         )
 
         self.replay_buffer = learning_utils.ReplayBuffer(len(self.state_name_list), self.replay_buffer_maxlen)
-        self.warming_frames = []
+        self.initial_frames = []
+
+
+        self.timer = self.create_timer(0.1, self.test)
+        self.test_thread_worker = ThreadWorker()
         resources = runtime_resources.Resources('.stem/')
 
 
@@ -85,12 +91,43 @@ class STEM(Node):
 
         # for index, frame, embedding in replay_buffer.iterate():
         #     print(index, frame, embedding)
+        X = np.array([[1, 2], [1, 4], [1, 0],
+                   [10, 2], [10, 4], [10, 0]])
+        kmeans = KMeans(n_clusters=2, random_state=0).fit(X)
+        self.get_logger().info(str(kmeans.labels_))
+        kmeans.predict([[0, 0], [12, 3]])
+        self.get_logger().info(str(kmeans.cluster_centers_))
+
+        pkl_filename = "pickle_model.pkl"
+        with open(pkl_filename, 'wb') as file:
+            pickle.dump(kmeans, file)
+
+        with open(pkl_filename, 'rb') as file:
+            pickle_model = pickle.load(file)
+        
+        self.get_logger().info(str(pickle_model.labels_))
+        pickle_model.predict([[0, 0], [12, 3]])
+        self.get_logger().info(str(pickle_model.cluster_centers_))
+
 
     def start(self):
         self.sensor_data_sampleing_sw.start()
 
+    def test_worker(self, message):
+        time.sleep(1)
+        self.get_logger().info(message)
+        return 'OK', 0
+
     def test(self):
         pass
+        self.get_logger().info(
+            str(
+                self.test_thread_worker.run(
+                    self.test_worker, args=('test message',), on_finished=lambda ret: self.get_logger().info(ret[0])
+                )
+            )
+        )
+
         # status = {'is_sensor_queue_full': False}
         # message = stem_utils.fill_message_from_dict(STEMStatus(), status)
         # self.status_publisher.publish(message)
@@ -109,14 +146,17 @@ class STEM(Node):
         self.sensor_data_sampleing_sw.restart()
 
         if len(self.sensor_data_queue) == self.sensor_data_queue.maxlen:
-            
+            if self.replay_buffer.length() < self.nmin_samples_replay_buffer:
+                self.initial_frames.append(self.sensor_data_queue)
+                if len(self.initial_frames) >= self.nmin_samples_replay_buffer:
+                    pass
             # print(a)
             # try:
-            print(self.model(np.array([self.sensor_data_queue])))
+            # print(self.model(np.array([self.sensor_data_queue])))
             # except e:
             #     print('A: ')
             #     print(e)
-            pass
+            
 
         self.publish_status()
 

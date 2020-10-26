@@ -102,6 +102,9 @@ def recal_embeddings(model, replay_buffer):
     for index, frame, embedding in zip(indices, frames, embeddings):
         replay_buffer.append(index, frame, embedding)
 
+def append_initial_frames(frames, replay_buffer, model, state_classifier):
+    embeddings, _ = model(np.array(frames))
+
 
 class StateNameIndexBiMapper():
     def __init__(self):
@@ -196,6 +199,9 @@ class StateClassifier():
     def __init__(self, n_states):
         self.cluster_centers = None
         self.n_states = n_states
+        self.kmeans = KMeans(
+            n_clusters=n_states
+        )
 
     def update_cluster_centers(self, embeddings):
         if len(embeddings) < self.n_states:
