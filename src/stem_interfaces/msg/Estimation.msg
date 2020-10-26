@@ -1,0 +1,2 @@
+int32 state_id
+string state_name

@@ -40,6 +40,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/GeneralSensorData.msg"
   "msg/SuperviseSignal.msg"
   "msg/STEMStatus.msg"
+  "msg/Estimation.msg"
+  "srv/SaveModel.srv"
 )
 
 

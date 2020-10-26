@@ -85,10 +85,6 @@ def make_model(sensor_data_queue_size, sensor_data_segment_size):
     return model
 
 
-def cal_embedding(model, feature_frame):
-    [embedding], _ = model([feature_frame])
-    return embedding
-
 def recal_embeddings(model, replay_buffer):
     frames = []
     indices = []
@@ -104,28 +100,36 @@ def recal_embeddings(model, replay_buffer):
 
 def append_initial_frames(frames, replay_buffer, model, state_classifier):
     embeddings, _ = model(np.array(frames))
+    clustered_ids = state_classifier.fit_predict(embeddings)
+    for frame, embedding, clustered_id in zip(frames, embeddings, clustered_ids):
+        replay_buffer.append(clustered_id, frame, embedding)
 
+def estimate_state(frame, model, state_classifier):
+    [embedding], _ = model(np.array([frame]))
+    [state_id] = state_classifier.predict([embedding])
 
-class StateNameIndexBiMapper():
+    return state_id, frame, embedding
+
+class StateNameIdBiMapper():
     def __init__(self):
-        # x: name; y: index
+        # x: name; y: id
         self.bimapper = BiMapper()
     
-    def get_name(self, index):
-        if index not in self.bimapper.y2x:
+    def get_name(self, state_id):
+        if state_id not in self.bimapper.y2x:
             return None
 
-        return self.bimapper.y2x[index]
+        return self.bimapper.y2x[state_id]
     
 
-    def get_index(self, name):
-        if name not in self.bimapper.x2y:
+    def get_id(self, state_name):
+        if state_name not in self.bimapper.x2y:
             return None
         
-        return self.bimapper.x2y[name]
+        return self.bimapper.x2y[state_name]
         
-    def bind(self, name, index):
-        self.bimapper.bind(name, index)
+    def bind(self, state_name, state_id):
+        self.bimapper.bind(state_name, state_id)
 
 
 class ReplayBuffer():
@@ -140,13 +144,13 @@ class ReplayBuffer():
     def length(self):
         return sum([len(frame) for frame in self.feature_frames])
 
-    def append(self, state_major_index, feature_frame, embedding):
-        self.feature_frames[state_major_index].append(feature_frame)
-        self.embeddings[state_major_index].append(embedding)
+    def append(self, state_major_id, feature_frame, embedding):
+        self.feature_frames[state_major_id].append(feature_frame)
+        self.embeddings[state_major_id].append(embedding)
     
-    def append_back_buffer(self, state_major_index, feature_frame, embedding):
-        self.feature_frames_back[state_major_index].append(feature_frame)
-        self.embeddings_back[state_major_index].append(embedding)
+    def append_back_buffer(self, state_major_id, feature_frame, embedding):
+        self.feature_frames_back[state_major_id].append(feature_frame)
+        self.embeddings_back[state_major_id].append(embedding)
 
     def get_feature_frames(self, condition=None):
         return self._get_samples(self.feature_frames, condition)
@@ -195,46 +199,30 @@ class ReplayBuffer():
         return samples, indices
     
 
-class StateClassifier():
-    def __init__(self, n_states):
-        self.cluster_centers = None
-        self.n_states = n_states
-        self.kmeans = KMeans(
-            n_clusters=n_states
-        )
+# class StateClassifier():
+#     def __init__(self, n_states):
+#         self.n_states = n_states
+#         self.kmeans = KMeans(
+#             n_clusters=n_states
+#         )
 
-    def update_cluster_centers(self, embeddings):
-        if len(embeddings) < self.n_states:
-            return None
+#     def update_cluster_centers(self, embeddings):
+#         if len(embeddings) < self.n_states:
+#             return None
         
-        kmeans = KMeans(
-            n_clusters=self.n_states
-        )
-        clustered_ids = kmeans.fit_predict(embeddings)
+#         clustered_ids = kmeans.fit_predict(embeddings)
 
-        if self.cluster_centers is None:
-            self.cluster_centers = kmeans.cluster_centers_
-
-        else:
-            pairs = nearest(kmeans.cluster_centers_, self.cluster_centers)
-            l2g = {}
-
-            for lindex, gindex in pairs:
-                l2g[lindex] = gindex
-                self.cluster_centers[gindex] = kmeans.cluster_centers_[lindex]
-
-            for i in range(len(clustered_ids)):
-                clustered_ids[i] = l2g[clustered_ids[i]]
-        
-        return clustered_ids
     
-    def get_nearest_cluster_index(self, embedding):
-        l = [[np.linalg.norm(self.cluster_centers[i] - embedding), i] for i in range(len(self.cluster_centers))]
+#     def get_nearest_cluster_index(self, embedding):
+#         l = [[np.linalg.norm(self.cluster_centers[i] - embedding), i] for i in range(len(self.cluster_centers))]
 
-        l.sort(key=lambda x: x[0])
+#         l.sort(key=lambda x: x[0])
 
-        return l[1]
+#         return l[1]
 
+#     @property
+#     def cluster_centers(self):
+#         return self.kmeans.cluster_centers_
         
 # class Estimator():
 #     def __init__(self, model=None, precedents_dict=None):

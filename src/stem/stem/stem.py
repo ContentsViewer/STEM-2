@@ -12,6 +12,7 @@ import pickle
 from stem_interfaces.msg import GeneralSensorData
 from stem_interfaces.msg import SuperviseSignal
 from stem_interfaces.msg import STEMStatus
+from stem_interfaces.msg import Estimation
 
 from stem_lib.stdlib import runtime_resources
 from stem_lib.stdlib.bimapper import BiMapper
@@ -20,6 +21,7 @@ from stem_lib.stdlib.stopwatch import Stopwatch
 from stem_lib import utils as stem_utils
 from stem_lib import learning_utils
 
+
 class STEM(Node):
     def __init__(self):
         super().__init__('stem')
@@ -27,7 +29,7 @@ class STEM(Node):
         self.get_logger().info('STEM is Awaken!')
 
         self.sensor_data_queue_size = stem_utils.load_parameter(self, 'sensor_data_queue_size', 100)
-        self.state_name_list = stem_utils.load_parameter(self, 'state_name_list', ['touched', 'not_touched'])
+        self.state_names = stem_utils.load_parameter(self, 'state_names', ['touched', 'not_touched'])
         self.sensor_data_segment_size = stem_utils.load_parameter(self, 'sensor_data_segment_size', 2)
         self.replay_buffer_maxlen = stem_utils.load_parameter(self, 'replay_buffer_maxlen', 100)
         self.nmin_samples_replay_buffer = stem_utils.load_parameter(self, 'nmin_samples_replay_buffer', 50)
@@ -42,14 +44,21 @@ class STEM(Node):
         self.supervise_signal_receiver = self.create_subscription(
             SuperviseSignal,
             'supervise_signal',
-            self.on_receiver_supervise_signal,
+            self.on_receive_supervise_signal,
             QoSProfile(depth=10)
         )
 
         self.status_publisher = self.create_publisher(
             STEMStatus,
             'stem_status',
-            QoSProfile(depth=10))
+            QoSProfile(depth=10)
+        )
+
+        self.estimation_publisher = self.create_publisher(
+            Estimation,
+            'estimation',
+            QoSProfile(depth=10)
+        )
 
         self.status = {
             'sensor_data_queue_length': 0,
@@ -64,14 +73,16 @@ class STEM(Node):
             self.sensor_data_queue_size, self.sensor_data_segment_size
         )
 
-        self.replay_buffer = learning_utils.ReplayBuffer(len(self.state_name_list), self.replay_buffer_maxlen)
+        self.replay_buffer = learning_utils.ReplayBuffer(len(self.state_names), self.replay_buffer_maxlen)
         self.initial_frames = []
+        self.state_classifier = KMeans(n_clusters=len(self.state_names))
+        self.thread_worker = ThreadWorker()
 
-
-        self.timer = self.create_timer(0.1, self.test)
-        self.test_thread_worker = ThreadWorker()
         resources = runtime_resources.Resources('.stem/')
 
+
+        # self.timer = self.create_timer(0.1, self.test)
+        # self.test_thread_worker = ThreadWorker()
 
         self.get_logger().info('Initializing Completed.')
 
@@ -91,27 +102,30 @@ class STEM(Node):
 
         # for index, frame, embedding in replay_buffer.iterate():
         #     print(index, frame, embedding)
-        X = np.array([[1, 2], [1, 4], [1, 0],
-                   [10, 2], [10, 4], [10, 0]])
-        kmeans = KMeans(n_clusters=2, random_state=0).fit(X)
-        self.get_logger().info(str(kmeans.labels_))
-        kmeans.predict([[0, 0], [12, 3]])
-        self.get_logger().info(str(kmeans.cluster_centers_))
+        # X = np.array([[1, 2], [1, 4], [1, 0],
+        #            [10, 2], [10, 4], [10, 0]])
+        # kmeans = KMeans(n_clusters=2, random_state=0).fit(X)
+        # self.get_logger().info(str(kmeans.labels_))
+        # kmeans.predict([[0, 0], [12, 3]])
+        # self.get_logger().info(str(kmeans.cluster_centers_))
 
-        pkl_filename = "pickle_model.pkl"
-        with open(pkl_filename, 'wb') as file:
-            pickle.dump(kmeans, file)
+        # pkl_filename = "pickle_model.pkl"
+        # with open(pkl_filename, 'wb') as file:
+        #     pickle.dump(kmeans, file)
 
-        with open(pkl_filename, 'rb') as file:
-            pickle_model = pickle.load(file)
+        # with open(pkl_filename, 'rb') as file:
+        #     pickle_model = pickle.load(file)
         
-        self.get_logger().info(str(pickle_model.labels_))
-        pickle_model.predict([[0, 0], [12, 3]])
-        self.get_logger().info(str(pickle_model.cluster_centers_))
+        # self.get_logger().info(str(pickle_model.labels_))
+        # pickle_model.predict([[0, 0], [12, 3]])
+        # self.get_logger().info(str(pickle_model.cluster_centers_))
 
 
     def start(self):
         self.sensor_data_sampleing_sw.start()
+
+    def reset(self):
+        pass
 
     def test_worker(self, message):
         time.sleep(1)
@@ -149,23 +163,38 @@ class STEM(Node):
             if self.replay_buffer.length() < self.nmin_samples_replay_buffer:
                 self.initial_frames.append(self.sensor_data_queue)
                 if len(self.initial_frames) >= self.nmin_samples_replay_buffer:
-                    pass
-            # print(a)
-            # try:
-            # print(self.model(np.array([self.sensor_data_queue])))
-            # except e:
-            #     print('A: ')
-            #     print(e)
-            
+                    self.thread_worker.run(
+                        learning_utils.append_initial_frames, 
+                        args=(self.initial_frames, self.replay_buffer, self.model, self.state_classifier),
+                        on_finished=lambda ret: self.initial_frames.clear()
+                    )
+            else:
+                self.thread_worker.run(
+                    learning_utils.estimate_state,
+                    args=(self.sensor_data_queue, self.model, self.state_classifier),
+                    on_finished=self.on_estimated
+                )
 
         self.publish_status()
+    
+    def on_estimated(self, ret):
+        state_id, frame, embedding = ret
+        
+        print(ret)
+
+    def publish_estimation(self, state_name, state_id):
+        estimation = Estimation()
+        estimation.state_name = state_name
+        estimation.state_id = state_id
+        self.estimation_publisher.publish(estimation)
 
     def publish_status(self):
         self.status_publisher.publish(stem_utils.fill_message_from_dict(STEMStatus(), self.status))
 
-    def on_receiver_supervise_signal(self, supervise_signal):
+    def on_receive_supervise_signal(self, supervise_signal):
         self.get_logger().info(supervise_signal.supervised_state_name)
         pass
+
 
 
 def main(args=None):

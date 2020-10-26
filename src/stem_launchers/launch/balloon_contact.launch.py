@@ -16,7 +16,7 @@ def generate_launch_description():
             executable='stem',
             parameters=[{
                 'sensor_data_queue_size': 100,
-                'state_name_list': ["touched", "not_touched"],
+                'state_names': ["touched", "not_touched"],
                 'sensor_data_segment_size': 2,
                 'replay_buffer_maxlen': 100,
                 'nmin_samples_replay_buffer': 50
