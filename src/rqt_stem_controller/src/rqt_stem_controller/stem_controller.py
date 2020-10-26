@@ -27,18 +27,18 @@ class STEMController(Plugin):
 
     
     def timer_callback(self):
+        pass
+        # if self._widget.is_pressed_supervise_button:
+        #     supervised_state_name = self._widget.state_name_combo_box.currentText()
+        #     if supervised_state_name == '':
+        #         return
 
-        if self._widget.is_pressed_supervise_button:
-            supervised_state_name = self._widget.state_name_combo_box.currentText()
-            if supervised_state_name == '':
-                return
-
-            supervise_signal = SuperviseSignal()
-            supervise_signal.supervised_state_name = supervised_state_name
-            self._publisher.publish(supervise_signal)
-            self._widget.supervised_state_label.setText(supervised_state_name)
-        else:
-            self._widget.supervised_state_label.setText('NONE')
+        #     supervise_signal = SuperviseSignal()
+        #     supervise_signal.supervised_state_name = supervised_state_name
+        #     self._publisher.publish(supervise_signal)
+        #     self._widget.supervised_state_label.setText(supervised_state_name)
+        # else:
+        #     self._widget.supervised_state_label.setText('NONE')
 
     def save_settings(self, plugin_settings, instance_settings):
         pass
