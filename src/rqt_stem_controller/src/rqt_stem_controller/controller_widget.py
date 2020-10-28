@@ -36,48 +36,34 @@ class SuperviseButton(QPushButton):
     def is_pressed(self):
         return self._is_pressed
 
+def lamp_off(lamp):
+
+    palette = lamp.palette()
+    palette.setColor(QPalette.Foreground, QColor('#FF0000'))
+    lamp.setPalette(palette)
+
+def lamp_on(lamp):
+
+    palette = lamp.palette()
+    palette.setColor(QPalette.Foreground, QColor('#00FF00'))
+    lamp.setPalette(palette)
+
 class SignalLampController():
     def __init__(self):
         self._triggered_signal_lamps = {}
         self._ready_signal_lamps = queue.Queue()
 
-    def trigger_signal_lamp(self, lamp):
-
-        if lamp in self._triggered_signal_lamps:
-            timer = self._triggered_signal_lamps[lamp]['start_time'] = time.time()
-            timer.stop()
-            timer.start(100)
+    def trigger(self, lamp):
+        self._triggered_signal_lamps[lamp] = time.time()
+        lamp_on(lamp)
         
-
-    def _trigger_signal_lamp(self, lamp):
-        def lamp_off():
-            self._triggered_signal_lamps[lamp]['timer'].stop()
-            del _triggered_signal_lamps[lamp]
-
-            palette = lamp.palette()
-            palette.setColor(QPalette.Foreground, QColor('#00FF00'))
-            lamp.setPalette(palette)
-
-        if lamp in self._triggered_signal_lamps:
-            timer = self._triggered_signal_lamps[lamp]['timer']
-            timer.stop()
-            timer.start(100)
-        
-        timer = QTimer()
-        timer.timeout.connect(lamp_off)
-        
-        palette = lamp.palette()
-        palette.setColor(QPalette.Foreground, QColor('#FF0000'))
-        lamp.setPalette(palette)
-
-        self._triggered_signal_lamps[lamp] = {'timer': timer}
-        timer.start(100)
 
     def update(self):
-        try:
-            while 
-            lamp = self._ready_signal_lamps.get_nowait()
-
+        for lamp, start_time in list(self._triggered_signal_lamps.items()):
+            if time.time() - start_time > 0.1:
+                del self._triggered_signal_lamps[lamp]
+                lamp_off(lamp)
+        
 class ControllerWidget(QWidget):
     def __init__(self, parent=None):
         super(ControllerWidget, self).__init__(parent)

@@ -4,9 +4,10 @@ import queue
 from python_qt_binding.QtWidgets import QVBoxLayout, QWidget
 from python_qt_binding.QtCore import Slot, QSignalMapper, QTimer, qWarning
 from rqt_gui_py.plugin import Plugin
+
 from .controller_widget import ControllerWidget
 from .controller_widget import SuperviseButton
-from .controller_widget import trigger_signal_lamp
+from .controller_widget import SignalLampController
 
 from rclpy.qos import QoSProfile
 from ros2param.api import call_get_parameters
@@ -35,7 +36,7 @@ class STEMController(Plugin):
         
         self._context.add_widget(self._widget)
 
-        self._publisher = self._node.create_publisher(
+        self._supervise_signal_publisher = self._node.create_publisher(
             SuperviseSignal, 
             'supervise_signal', 
             qos_profile=QoSProfile(depth=10)
@@ -57,6 +58,8 @@ class STEMController(Plugin):
         self._timer = QTimer(self)
         self._timer.timeout.connect(self.update)
         self._timer.start(20)
+
+        self._lamp_controller = SignalLampController()
         # print('ok')
 
     def fetch_state_names(self):
@@ -92,8 +95,10 @@ class STEMController(Plugin):
         # print('test')
         supervise_signal = SuperviseSignal()
         supervise_signal.supervised_state_name = supervised_state_name
-        self._publisher.publish(supervise_signal)
+        self._supervise_signal_publisher.publish(supervise_signal)
 
+
+        self._lamp_controller.update()
         # print(self._widget.test_button.is_pressed)
         
         # if self._widget.is_pressed_supervise_button:
@@ -112,7 +117,7 @@ class STEMController(Plugin):
         self._widget.estimation_state_name.setText(estimation.state_name)
         self._widget.estimation_state_id.display(estimation.state_id)
 
-        trigger_signal_lamp(self._widget.estimation_signal_lamp, self)
+        self._lamp_controller.trigger(self._widget.estimation_signal_lamp)
 
     def save_settings(self, plugin_settings, instance_settings):
         pass
@@ -122,4 +127,6 @@ class STEMController(Plugin):
 
     def shutdown_plugin(self):
         self._timer.stop()
+        self._node.destroy_subscription(self._estimation_receiver)
+        self._node.destroy_publisher(self._supervise_signal_publisher)
         # pass
