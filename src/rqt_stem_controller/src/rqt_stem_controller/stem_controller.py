@@ -6,6 +6,7 @@ from python_qt_binding.QtCore import Slot, QSignalMapper, QTimer, qWarning
 from rqt_gui_py.plugin import Plugin
 from .controller_widget import ControllerWidget
 from .controller_widget import SuperviseButton
+from .controller_widget import trigger_signal_lamp
 
 from rclpy.qos import QoSProfile
 from ros2param.api import call_get_parameters
@@ -40,12 +41,12 @@ class STEMController(Plugin):
             qos_profile=QoSProfile(depth=10)
         )
 
-        # self._estimation_receiver = self._node.create_subscription(
-        #     Estimation,
-        #     'estimation',
-        #     self.on_receive_estimation,
-        #     QoSProfile(depth=10)
-        # )
+        self._estimation_receiver = self._node.create_subscription(
+            Estimation,
+            'estimation',
+            self.on_receive_estimation,
+            QoSProfile(depth=10)
+        )
         # self._timer = self._node.create_timer(0.02, self.update)
         
         self.received_state_names = queue.Queue()
@@ -108,7 +109,10 @@ class STEMController(Plugin):
         #     self._widget.supervised_state_label.setText('NONE')
 
     def on_receive_estimation(self, estimation):
-        pass
+        self._widget.estimation_state_name.setText(estimation.state_name)
+        self._widget.estimation_state_id.display(estimation.state_id)
+
+        trigger_signal_lamp(self._widget.estimation_signal_lamp, self)
 
     def save_settings(self, plugin_settings, instance_settings):
         pass
