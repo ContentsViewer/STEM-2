@@ -5,6 +5,7 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile
 import time
 import numpy as np
+from concurrent.futures.thread import ThreadPoolExecutor
 
 from sklearn.cluster import KMeans
 import pickle
@@ -15,8 +16,7 @@ from stem_interfaces.msg import STEMStatus
 from stem_interfaces.msg import Estimation
 
 from stem_lib.stdlib import runtime_resources
-from stem_lib.stdlib.bimapper import BiMapper
-from stem_lib.stdlib.threading import ThreadWorker
+from stem_lib.stdlib.concurrent.thread import SingleThreadExecutor
 from stem_lib.stdlib.stopwatch import Stopwatch
 from stem_lib import utils as stem_utils
 from stem_lib import learning_utils
@@ -76,7 +76,8 @@ class STEM(Node):
         self.replay_buffer = learning_utils.ReplayBuffer(len(self.state_names), self.replay_buffer_maxlen)
         self.initial_frames = []
         self.state_classifier = KMeans(n_clusters=len(self.state_names))
-        self.thread_worker = ThreadWorker()
+        self.state_name_id_bimapper = learning_utils.StateNameIdBiMapper()
+        self.compute_executor = SingleThreadExecutor()
 
         resources = runtime_resources.Resources('.stem/')
 
@@ -127,20 +128,10 @@ class STEM(Node):
     def reset(self):
         pass
 
-    def test_worker(self, message):
-        time.sleep(1)
-        self.get_logger().info(message)
-        return 'OK', 0
+    def test(self, mes):
+        time.sleep(2)
 
-    def test(self):
-        pass
-        self.get_logger().info(
-            str(
-                self.test_thread_worker.run(
-                    self.test_worker, args=('test message',), on_finished=lambda ret: self.get_logger().info(ret[0])
-                )
-            )
-        )
+        self.get_logger().info(str(mes))
 
         # status = {'is_sensor_queue_full': False}
         # message = stem_utils.fill_message_from_dict(STEMStatus(), status)
@@ -163,26 +154,33 @@ class STEM(Node):
             if self.replay_buffer.length() < self.nmin_samples_replay_buffer:
                 self.initial_frames.append(self.sensor_data_queue)
                 if len(self.initial_frames) >= self.nmin_samples_replay_buffer:
-                    self.thread_worker.run(
+                    self.compute_executor.run(
                         learning_utils.append_initial_frames, 
                         args=(self.initial_frames, self.replay_buffer, self.model, self.state_classifier),
-                        on_finished=lambda ret: self.initial_frames.clear()
+                        done_callback=lambda exit_status: self.initial_frames.clear()
                     )
+                    
             else:
-                self.thread_worker.run(
+                self.compute_executor.run(
                     learning_utils.estimate_state,
                     args=(self.sensor_data_queue, self.model, self.state_classifier),
-                    on_finished=self.on_estimated
+                    done_callback=self.on_estimated
                 )
 
         self.publish_status()
-    
-    def on_estimated(self, ret):
-        state_id, frame, embedding = ret
-        
-        print(ret)
 
-    def publish_estimation(self, state_name, state_id):
+    
+    def on_estimated(self, exit_status):
+        try:
+            state_id, frame, embedding = exit_status.result()
+        except BaseException as exc:
+            self.get_logger().error(str(exc))
+            return
+
+        self.publish_estimation(state_id, str(self.state_name_id_bimapper.get_name(state_id)))
+        
+
+    def publish_estimation(self, state_id, state_name):
         estimation = Estimation()
         estimation.state_name = state_name
         estimation.state_id = state_id
@@ -192,7 +190,7 @@ class STEM(Node):
         self.status_publisher.publish(stem_utils.fill_message_from_dict(STEMStatus(), self.status))
 
     def on_receive_supervise_signal(self, supervise_signal):
-        self.get_logger().info(supervise_signal.supervised_state_name)
+        # self.get_logger().info(supervise_signal.supervised_state_name)
         pass
 
 

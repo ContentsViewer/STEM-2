@@ -15,8 +15,12 @@ class SuperviseButton(QPushButton):
         self._state_name = state_name
         self._is_pressed = False
 
-        self.pressed.connect(self._on_pressed)
-        self.released.connect(self._on_released)
+        # self.pressed.connect(self._on_pressed)
+        # self.released.connect(self._on_released)
+
+        self.pressed.connect(lambda: setattr(self, '_is_pressed', True))
+        self.released.connect(lambda: setattr(self, '_is_pressed', False))
+
         
     
     @property

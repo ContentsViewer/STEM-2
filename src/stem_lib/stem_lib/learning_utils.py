@@ -107,8 +107,7 @@ def append_initial_frames(frames, replay_buffer, model, state_classifier):
 def estimate_state(frame, model, state_classifier):
     [embedding], _ = model(np.array([frame]))
     [state_id] = state_classifier.predict([embedding])
-
-    return state_id, frame, embedding
+    return int(state_id), frame, embedding
 
 class StateNameIdBiMapper():
     def __init__(self):
