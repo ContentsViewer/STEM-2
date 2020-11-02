@@ -15,9 +15,9 @@ def call_get_parameters_async(*, node, node_name, parameter_names):
 
     request = GetParameters.Request()
     request.names = parameter_names
-    return request_service_async(client, request, 5.0)
+    return request_service_async(client, request)
 
-def request_service_async(client, request, timeout_sec=None):
+def request_service_async(client, request, timeout_sec=0.25):
     if not client.service_is_ready():
         ready = client.wait_for_service(timeout_sec)
         if not ready:

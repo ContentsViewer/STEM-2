@@ -81,8 +81,12 @@ class STEMController(Plugin):
             except Exception as e:
                 self._node.get_logger().warn(f'Failed to get parameter "stem/state_names". Please reload the plugin: {e}')
 
+        try:
+            future = stem_utils.call_get_parameters_async(node=self._node, node_name='stem', parameter_names=['state_names'])
+        except Exception as e:
+            self._node.get_logger().error(f'Failed to request stem/get_parameters service: {e}')
+            return
 
-        future = stem_utils.call_get_parameters_async(node=self._node, node_name='stem', parameter_names=['state_names'])
         future.add_done_callback(on_receive_response)
             
 
@@ -138,15 +142,20 @@ class STEMController(Plugin):
         # pass
     
     def request_save_model(self):
-        future = stem_utils.request_service_async(self._save_model_client, SaveModel.Request())
+        try:
+            future = stem_utils.request_service_async(self._save_model_client, SaveModel.Request())
+        except Exception as e:
+            self._node.get_logger().error(f'Failed to request save_model service: {e}')
+            return
 
         def on_receive_response(future):
             try:
                 response = future.result()
-                self._node.get_logger().info(str(response.success))
+                # self._node.get_logger().info(str(response.success))
+                self._lamp_controller.trigger(self._widget.save_model_lamp)
 
             except Exception as e:
-                self._node.get_logger().error(f'Exception has raised while requesting for save model service: {e}')
+                self._node.get_logger().error(f'Exception has been raised while requesting for save model service: {e}')
             
             self._widget.save_model_button.setEnabled(True)
 

@@ -154,13 +154,12 @@ class STEM(Node):
             self.get_logger().warning('sensor_data segment size is incompatible.')
             return
         
-        # print(sensor_data.segments)
-        # time.sleep(2)
+        self.status['sensor_sampling_rate'] = 1 / (self.sensor_data_sampleing_sw.elapsed + 1e-8)
+        self.sensor_data_sampleing_sw.restart()
+
         self.sensor_data_queue.append(sensor_data.segments)
         self.status['sensor_data_queue_length'] = len(self.sensor_data_queue)
 
-        self.status['sensor_sampling_rate'] = 1 / (self.sensor_data_sampleing_sw.elapsed + 1e-8)
-        self.sensor_data_sampleing_sw.restart()
 
         if len(self.sensor_data_queue) == self.sensor_data_queue.maxlen:
             if self.replay_buffer.length() < self.nmin_samples_replay_buffer:
@@ -181,12 +180,13 @@ class STEM(Node):
 
         self.publish_status()
 
+
     
     def on_estimated(self, exit_status):
         try:
             state_id, frame, embedding = exit_status.result()
-        except BaseException as exc:
-            self.get_logger().error(str(exc))
+        except Exception as e:
+            self.get_logger().error(f'{e}')
             return
 
         self.publish_estimation(state_id, str(self.state_name_id_bimapper.get_name(state_id)))
@@ -207,9 +207,10 @@ class STEM(Node):
 
     def on_request_save_model(self, request, response):
         try:
-            learning_utils.save_model(self.working_dir, self.replay_buffer)
-        except:
+            learning_utils.save_model(self.working_dir, self.replay_buffer, self.model)
+        except Exception as e:
             response.success = False
+            self.get_logger().error(f'Failed to save model: {e}')
         else:
             response.success = True
         

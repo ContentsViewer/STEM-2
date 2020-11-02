@@ -51,12 +51,10 @@ def lamp_on(lamp):
 class SignalLampController():
     def __init__(self):
         self._triggered_signal_lamps = {}
-        self._ready_signal_lamps = queue.Queue()
 
     def trigger(self, lamp):
         self._triggered_signal_lamps[lamp] = time.time()
         lamp_on(lamp)
-        
 
     def update(self):
         for lamp, start_time in list(self._triggered_signal_lamps.items()):

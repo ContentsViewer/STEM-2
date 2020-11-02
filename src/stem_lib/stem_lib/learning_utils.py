@@ -299,9 +299,13 @@ def train_model(model, replay_buffer, ):
     pass
 
 
-def save_model(dir_path, replay_buffer):
+def save_model(dir_path, replay_buffer, model):
     dir_path.mkdir(parents=True, exist_ok=True)
-    
+
+    with (dir_path / 'replay_buffer.pkl').open('wb') as file:
+        pickle.dump(replay_buffer, file)
+
+    model.save(dir_path / 'model')
 
 def restore_model(dir_path):
     if not dir_path.is_dir():
