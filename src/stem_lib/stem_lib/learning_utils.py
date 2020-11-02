@@ -1,3 +1,4 @@
+import os
 import time
 import queue
 from collections import deque
@@ -7,6 +8,7 @@ import tensorflow as tf
 from itertools import product
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
+import pickle
 
 from .stdlib.collections import dotdict
 from .stdlib.bimapper import BiMapper
@@ -292,6 +294,23 @@ class ReplayBuffer():
 
 #         self.results.put(result)
 #         self.is_running = False
+
+def train_model(model, replay_buffer, ):
+    pass
+
+
+def save_model(dir_path, replay_buffer):
+    dir_path.mkdir(parents=True, exist_ok=True)
+    
+
+def restore_model(dir_path):
+    if not dir_path.is_dir():
+        raise RuntimeError(f'{dir_path} is not a directory.')
+    
+    with (dir_path / 'replay_buffer.pkl').open('rb') as file:
+        replay_buffer = pickle.load(file)
+    
+    return replay_buffer
 
 
 class Trainor():

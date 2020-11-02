@@ -13,12 +13,14 @@ def call_get_parameters_async(*, node, node_name, parameter_names):
     # create client
     client = node.create_client(GetParameters, f'{node_name}/get_parameters')
 
-    # call as soon as ready
-    ready = client.wait_for_service(timeout_sec=5.0)
-    if not ready:
-        raise RuntimeError('Wait for service timed out')
-
     request = GetParameters.Request()
     request.names = parameter_names
-    return client.call_async(request)
+    return request_service_async(client, request, 5.0)
+
+def request_service_async(client, request, timeout_sec=None):
+    if not client.service_is_ready():
+        ready = client.wait_for_service(timeout_sec)
+        if not ready:
+            raise RuntimeError('Wait for service timed out')
     
+    return client.call_async(request)

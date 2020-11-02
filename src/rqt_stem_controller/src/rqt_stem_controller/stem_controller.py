@@ -15,6 +15,7 @@ from rcl_interfaces.msg import ParameterType
 
 from stem_interfaces.msg import SuperviseSignal
 from stem_interfaces.msg import Estimation
+from stem_interfaces.srv import SaveModel
 
 from stem_lib.stdlib.concurrent.thread import run_once_async
 from stem_lib import utils as stem_utils
@@ -48,37 +49,42 @@ class STEMController(Plugin):
             self.on_receive_estimation,
             QoSProfile(depth=10)
         )
+
+        self._save_model_client = self._node.create_client(SaveModel, 'save_model')
         # self._timer = self._node.create_timer(0.02, self.update)
         
         self.received_state_names = queue.Queue()
         self.state_names = []
         # self.fetch_set_state_names()
-        run_once_async(self.fetch_state_names)
-
+        # run_once_async(self.fetch_state_names)
+        self.fetch_state_names()
+        
         self._timer = QTimer(self)
         self._timer.timeout.connect(self.update)
         self._timer.start(20)
+
+        self._widget.save_model_button.clicked.connect(self.request_save_model)
 
         self._lamp_controller = SignalLampController()
         # print('ok')
 
     def fetch_state_names(self):
-        try:
-            future = stem_utils.call_get_parameters_async(node=self._node, node_name='stem', parameter_names=['state_names'])
-            while not future.done():
-                # it's needed for yield
-                time.sleep(0.25)
-
-            response = future.result()
-            pvalue = response.values[0]
-            if pvalue.type != ParameterType.PARAMETER_STRING_ARRAY:
-                raise RuntimeError('type of parameter "state_names" is Not STRING_ARRAY')
+        def on_receive_response(future):
+            try:
+                response = future.result()
+                pvalue = response.values[0]
+                if pvalue.type != ParameterType.PARAMETER_STRING_ARRAY:
+                    raise RuntimeError('type of parameter "state_names" is Not STRING_ARRAY')
+                
+                self.received_state_names.put(pvalue.string_array_value)
             
-            self.received_state_names.put(pvalue.string_array_value)
+            except Exception as e:
+                self._node.get_logger().warn(f'Failed to get parameter "stem/state_names". Please reload the plugin: {e}')
 
-        except RuntimeError as e:
-            self._node.get_logger().warn(f'Failed to get parameter "stem/state_names". Please reload the plugin: {e}')
 
+        future = stem_utils.call_get_parameters_async(node=self._node, node_name='stem', parameter_names=['state_names'])
+        future.add_done_callback(on_receive_response)
+            
 
     def update(self):
         try:
@@ -130,3 +136,20 @@ class STEMController(Plugin):
         self._node.destroy_subscription(self._estimation_receiver)
         self._node.destroy_publisher(self._supervise_signal_publisher)
         # pass
+    
+    def request_save_model(self):
+        future = stem_utils.request_service_async(self._save_model_client, SaveModel.Request())
+
+        def on_receive_response(future):
+            try:
+                response = future.result()
+                self._node.get_logger().info(str(response.success))
+
+            except Exception as e:
+                self._node.get_logger().error(f'Exception has raised while requesting for save model service: {e}')
+            
+            self._widget.save_model_button.setEnabled(True)
+
+
+        future.add_done_callback(on_receive_response)
+        self._widget.save_model_button.setEnabled(False)

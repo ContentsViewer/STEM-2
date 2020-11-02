@@ -19,7 +19,8 @@ def generate_launch_description():
                 'state_names': ["touched", "not_touched"],
                 'sensor_data_segment_size': 2,
                 'replay_buffer_maxlen': 100,
-                'nmin_samples_replay_buffer': 50
+                'nmin_samples_replay_buffer': 50,
+                'working_dir': '.stem/balloon_contact'
             }],
             # emulate_tty=True,
             output='screen'

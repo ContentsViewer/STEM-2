@@ -1,4 +1,5 @@
 import os
+import pathlib
 from collections import deque
 import rclpy
 from rclpy.node import Node
@@ -6,16 +7,16 @@ from rclpy.qos import QoSProfile
 import time
 import numpy as np
 from concurrent.futures.thread import ThreadPoolExecutor
-
 from sklearn.cluster import KMeans
 import pickle
+from datetime import datetime
 
 from stem_interfaces.msg import GeneralSensorData
 from stem_interfaces.msg import SuperviseSignal
 from stem_interfaces.msg import STEMStatus
 from stem_interfaces.msg import Estimation
+from stem_interfaces.srv import SaveModel
 
-from stem_lib.stdlib import runtime_resources
 from stem_lib.stdlib.concurrent.thread import SingleThreadExecutor
 from stem_lib.stdlib.stopwatch import Stopwatch
 from stem_lib import utils as stem_utils
@@ -28,12 +29,23 @@ class STEM(Node):
 
         self.get_logger().info('STEM is Awaken!')
 
+        self.working_dir = stem_utils.load_parameter(self, 'working_dir', '.stem/' + datetime.strftime(datetime.now(), '%Y%m%d-%H%M%S'))
         self.sensor_data_queue_size = stem_utils.load_parameter(self, 'sensor_data_queue_size', 100)
         self.state_names = stem_utils.load_parameter(self, 'state_names', ['touched', 'not_touched'])
         self.sensor_data_segment_size = stem_utils.load_parameter(self, 'sensor_data_segment_size', 2)
         self.replay_buffer_maxlen = stem_utils.load_parameter(self, 'replay_buffer_maxlen', 100)
         self.nmin_samples_replay_buffer = stem_utils.load_parameter(self, 'nmin_samples_replay_buffer', 50)
         
+        self.working_dir = pathlib.Path(self.working_dir)
+        self.get_logger().info(f'Using {self.working_dir} as working directory.')
+
+        try:
+            learning_utils.restore_model(self.working_dir)
+
+        except Exception as e:
+            self.get_logger().warning(f'Failed to restore the model from {self.working_dir}. Create new model: {e}')
+        
+
         self.sensor_receiver = self.create_subscription(
             GeneralSensorData,
             'general_sensor_data',
@@ -60,6 +72,7 @@ class STEM(Node):
             QoSProfile(depth=10)
         )
 
+        self.save_model_service = self.create_service(SaveModel, 'save_model', self.on_request_save_model)
         self.status = {
             'sensor_data_queue_length': 0,
             'sensor_sampling_rate': 0
@@ -79,7 +92,6 @@ class STEM(Node):
         self.state_name_id_bimapper = learning_utils.StateNameIdBiMapper()
         self.compute_executor = SingleThreadExecutor()
 
-        resources = runtime_resources.Resources('.stem/')
 
 
         # self.timer = self.create_timer(0.1, self.test)
@@ -193,7 +205,15 @@ class STEM(Node):
         # self.get_logger().info(supervise_signal.supervised_state_name)
         pass
 
-
+    def on_request_save_model(self, request, response):
+        try:
+            learning_utils.save_model(self.working_dir, self.replay_buffer)
+        except:
+            response.success = False
+        else:
+            response.success = True
+        
+        return response
 
 def main(args=None):
     rclpy.init(args=args)
