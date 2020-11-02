@@ -1,4 +1,6 @@
+from rcl_interfaces.msg import ParameterType
 from rcl_interfaces.srv import GetParameters
+import ros2param.api
 
 def load_parameter(node, parameter_name, default_value):
     node.declare_parameter(parameter_name, default_value)
@@ -9,12 +11,10 @@ def fill_message_from_dict(message, fields):
         exec('message.' + name + '=value')
     return message
 
-def call_get_parameters_async(*, node, node_name, parameter_names):
-    # create client
-    client = node.create_client(GetParameters, f'{node_name}/get_parameters')
-
+def request_get_parameters_async(client, parameter_names):
     request = GetParameters.Request()
     request.names = parameter_names
+
     return request_service_async(client, request)
 
 def request_service_async(client, request, timeout_sec=0.25):
@@ -24,3 +24,16 @@ def request_service_async(client, request, timeout_sec=0.25):
             raise RuntimeError('Wait for service timed out')
     
     return client.call_async(request)
+
+def get_parameter_value(parameter_value, allowed_types):
+    """
+    Parameters
+    ----------
+        parameter_value : rcl_interfaces.msg.ParameterValue
+        allowed_types : list
+
+    """
+    if parameter_value.type not in allowed_types:
+        raise RuntimeError(f'ValidationError. parameter type {parameter_value.type} is not in allowed_types {allowed_types}')
+
+    return ros2param.api.get_value(parameter_value=parameter_value)

@@ -33,6 +33,7 @@ class STEM(Node):
         self.sensor_data_queue_size = stem_utils.load_parameter(self, 'sensor_data_queue_size', 100)
         self.state_names = stem_utils.load_parameter(self, 'state_names', ['touched', 'not_touched'])
         self.sensor_data_segment_size = stem_utils.load_parameter(self, 'sensor_data_segment_size', 2)
+        self.sensor_sampling_rate_min = stem_utils.load_parameter(self, 'sensor_sampling_rate_min', 35)
         self.replay_buffer_maxlen = stem_utils.load_parameter(self, 'replay_buffer_maxlen', 100)
         self.nmin_samples_replay_buffer = stem_utils.load_parameter(self, 'nmin_samples_replay_buffer', 50)
         
@@ -92,7 +93,7 @@ class STEM(Node):
         self.state_name_id_bimapper = learning_utils.StateNameIdBiMapper()
         self.compute_executor = SingleThreadExecutor()
 
-
+        self.sensor_sampling_rate_average = 0
 
         # self.timer = self.create_timer(0.1, self.test)
         # self.test_thread_worker = ThreadWorker()
@@ -154,31 +155,41 @@ class STEM(Node):
             self.get_logger().warning('sensor_data segment size is incompatible.')
             return
         
-        self.status['sensor_sampling_rate'] = 1 / (self.sensor_data_sampleing_sw.elapsed + 1e-8)
-        self.sensor_data_sampleing_sw.restart()
+        try:
+            self.status['sensor_sampling_rate'] = 1 / (self.sensor_data_sampleing_sw.elapsed + 1e-8)
+            self.sensor_data_sampleing_sw.restart()
+            
+            self.sensor_sampling_rate_average = 0.5 * ( self.status['sensor_sampling_rate'] + self.sensor_sampling_rate_average)
+            # self.get_logger().info(f'{self.sensor_sampling_rate_average}')
+            if self.sensor_sampling_rate_average < self.sensor_sampling_rate_min:
+                self.get_logger().warning(f'Low sensor sampling rate detected. Restart to pickup sensor data: {self.sensor_sampling_rate_average}/{self.sensor_sampling_rate_min}')
+                self.sensor_data_queue.clear()
 
-        self.sensor_data_queue.append(sensor_data.segments)
-        self.status['sensor_data_queue_length'] = len(self.sensor_data_queue)
+            self.sensor_data_queue.append(sensor_data.segments)
+            self.status['sensor_data_queue_length'] = len(self.sensor_data_queue)
 
 
-        if len(self.sensor_data_queue) == self.sensor_data_queue.maxlen:
-            if self.replay_buffer.length() < self.nmin_samples_replay_buffer:
-                self.initial_frames.append(self.sensor_data_queue)
-                if len(self.initial_frames) >= self.nmin_samples_replay_buffer:
+            if len(self.sensor_data_queue) == self.sensor_data_queue.maxlen:
+                if self.replay_buffer.length() < self.nmin_samples_replay_buffer:
+                    self.initial_frames.append(self.sensor_data_queue)
+                    if len(self.initial_frames) >= self.nmin_samples_replay_buffer:
+                        self.compute_executor.run(
+                            learning_utils.append_initial_frames, 
+                            args=(self.initial_frames, self.replay_buffer, self.model, self.state_classifier),
+                            done_callback=lambda exit_status: self.initial_frames.clear()
+                        )
+                        
+                else:
                     self.compute_executor.run(
-                        learning_utils.append_initial_frames, 
-                        args=(self.initial_frames, self.replay_buffer, self.model, self.state_classifier),
-                        done_callback=lambda exit_status: self.initial_frames.clear()
+                        learning_utils.estimate_state,
+                        args=(self.sensor_data_queue, self.model, self.state_classifier),
+                        done_callback=self.on_estimated
                     )
-                    
-            else:
-                self.compute_executor.run(
-                    learning_utils.estimate_state,
-                    args=(self.sensor_data_queue, self.model, self.state_classifier),
-                    done_callback=self.on_estimated
-                )
+        except Exception as e:
+            pass
 
-        self.publish_status()
+        finally:
+            self.publish_status()
 
 
     

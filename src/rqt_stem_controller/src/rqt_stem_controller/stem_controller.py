@@ -5,20 +5,22 @@ from python_qt_binding.QtWidgets import QVBoxLayout, QWidget
 from python_qt_binding.QtCore import Slot, QSignalMapper, QTimer, qWarning
 from rqt_gui_py.plugin import Plugin
 
+
+from rclpy.qos import QoSProfile
+from rcl_interfaces.msg import ParameterType
+from rcl_interfaces.srv import GetParameters
+
 from .controller_widget import ControllerWidget
 from .controller_widget import SuperviseButton
 from .controller_widget import SignalLampController
 
-from rclpy.qos import QoSProfile
-from ros2param.api import call_get_parameters
-from rcl_interfaces.msg import ParameterType
+from stem_lib.stdlib.concurrent.thread import run_once_async
+from stem_lib import utils as stem_utils
 
 from stem_interfaces.msg import SuperviseSignal
 from stem_interfaces.msg import Estimation
+from stem_interfaces.msg import STEMStatus
 from stem_interfaces.srv import SaveModel
-
-from stem_lib.stdlib.concurrent.thread import run_once_async
-from stem_lib import utils as stem_utils
 
 
 class STEMController(Plugin):
@@ -50,14 +52,27 @@ class STEMController(Plugin):
             QoSProfile(depth=10)
         )
 
+        self._stem_status_receiver = self._node.create_subscription(
+            STEMStatus,
+            'stem_status',
+            self.on_receive_stem_status,
+            QoSProfile(depth=10)
+        )
+
         self._save_model_client = self._node.create_client(SaveModel, 'save_model')
         # self._timer = self._node.create_timer(0.02, self.update)
-        
-        self.received_state_names = queue.Queue()
-        self.state_names = []
+    
+
+        self._stem_get_parameters_client = self._node.create_client(GetParameters, 'stem/get_parameters')
+        self.stem_params = {
+            'state_names': None,
+            'sensor_sampling_rate_min': None
+        }
+
+        self.command_queue = queue.Queue()
         # self.fetch_set_state_names()
         # run_once_async(self.fetch_state_names)
-        self.fetch_state_names()
+        self.fetch_stem_parameters()
         
         self._timer = QTimer(self)
         self._timer.timeout.connect(self.update)
@@ -66,23 +81,48 @@ class STEMController(Plugin):
         self._widget.save_model_button.clicked.connect(self.request_save_model)
 
         self._lamp_controller = SignalLampController()
+        self._busy_rate = 0.0
         # print('ok')
 
-    def fetch_state_names(self):
+    def fetch_stem_parameters(self):
         def on_receive_response(future):
             try:
                 response = future.result()
-                pvalue = response.values[0]
-                if pvalue.type != ParameterType.PARAMETER_STRING_ARRAY:
-                    raise RuntimeError('type of parameter "state_names" is Not STRING_ARRAY')
+
+                state_names, sensor_sampling_rate_min = response.values
+
+                try:
+                    self.stem_params['state_names'] = stem_utils.get_parameter_value(
+                        state_names, 
+                        [ParameterType.PARAMETER_STRING_ARRAY]
+                    )
+                    self.command_queue.put(
+                        (
+                            self._widget.set_supervise_buttons, 
+                            (self.stem_params['state_names'],), 
+                            {}
+                        )
+                    )
+                except Exception as e:
+                    self._node.get_logger().warn(f'Failed to get parameter "stem/state_names": {e}')
                 
-                self.received_state_names.put(pvalue.string_array_value)
-            
+                try:
+                    self.stem_params['sensor_sampling_rate_min'] = stem_utils.get_parameter_value(
+                        sensor_sampling_rate_min, 
+                        [ParameterType.PARAMETER_INTEGER, ParameterType.PARAMETER_DOUBLE]
+                    )
+                except Exception as e:
+                    self._node.get_logger().warn(f'Failed to get parameter "stem/sensor_sampling_rate_min": {e}')
+                        
+
             except Exception as e:
-                self._node.get_logger().warn(f'Failed to get parameter "stem/state_names". Please reload the plugin: {e}')
+                self._node.get_logger().warn(f'Failed to get stem parameters. Please reload the plugin: {e}')
 
         try:
-            future = stem_utils.call_get_parameters_async(node=self._node, node_name='stem', parameter_names=['state_names'])
+            future = stem_utils.request_get_parameters_async(
+                self._stem_get_parameters_client,
+                parameter_names=['state_names', 'sensor_sampling_rate_min']
+            )
         except Exception as e:
             self._node.get_logger().error(f'Failed to request stem/get_parameters service: {e}')
             return
@@ -92,8 +132,8 @@ class STEMController(Plugin):
 
     def update(self):
         try:
-            self.state_names = self.received_state_names.get_nowait()
-            self._widget.set_supervise_buttons(self.state_names)
+            command = self.command_queue.get_nowait()
+            command[0](*command[1], **command[2])
         except queue.Empty:
             pass
 
@@ -107,6 +147,8 @@ class STEMController(Plugin):
         supervise_signal.supervised_state_name = supervised_state_name
         self._supervise_signal_publisher.publish(supervise_signal)
 
+
+        self._widget.process_busy_rate.setValue(self._busy_rate)
 
         self._lamp_controller.update()
         # print(self._widget.test_button.is_pressed)
@@ -162,3 +204,12 @@ class STEMController(Plugin):
 
         future.add_done_callback(on_receive_response)
         self._widget.save_model_button.setEnabled(False)
+    
+    def on_receive_stem_status(self, status):
+            
+        min_rate = self.stem_params['sensor_sampling_rate_min']
+        if min_rate is not None:
+            current_rate = status.sensor_sampling_rate
+            self._busy_rate = max(100 - max(current_rate - min_rate, 0), 0)
+            # self._node.get_logger().info(f'{busy_rate}')
+        

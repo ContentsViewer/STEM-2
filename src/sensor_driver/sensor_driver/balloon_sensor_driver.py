@@ -17,9 +17,9 @@ class BalloonSensorDriver(Node):
     def __init__(self):
         super().__init__('balloon_sensor_driver')
 
-        port = stem_utils.load_parameter(self, "port", '/dev/ttyACM0')
-        baudrate = stem_utils.load_parameter(self, "baudrate", 19200)
-        read_period_sec = stem_utils.load_parameter(self, "read_period_sec", 0.02)
+        port = stem_utils.load_parameter(self, 'port', '/dev/ttyACM0')
+        baudrate = stem_utils.load_parameter(self, 'baudrate', 19200)
+        read_period_sec = stem_utils.load_parameter(self, 'read_period_sec', 0.02)
 
         # self.publisher_ = self.create_publisher(BalloonSensorData, 'balloon_sensor_data', QoSPresetProfiles.SENSOR_DATA.value)
         self.balloon_sensor_data_publisher = self.create_publisher(BalloonSensorData, 'balloon_sensor_data', 10)
