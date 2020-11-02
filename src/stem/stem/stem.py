@@ -36,6 +36,8 @@ class STEM(Node):
         self.sensor_sampling_rate_min = stem_utils.load_parameter(self, 'sensor_sampling_rate_min', 35)
         self.replay_buffer_maxlen = stem_utils.load_parameter(self, 'replay_buffer_maxlen', 100)
         self.nmin_samples_replay_buffer = stem_utils.load_parameter(self, 'nmin_samples_replay_buffer', 50)
+        self.supervise_time_length_min = stem_utils.load_parameter(self, 'supervise_time_length_min', 0.5)
+        self.self_learning_interval_sec = stem_utils.load_parameter(self, 'self_learning_interval_sec', 30)
         
         self.working_dir = pathlib.Path(self.working_dir)
         self.get_logger().info(f'Using {self.working_dir} as working directory.')
