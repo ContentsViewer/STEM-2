@@ -1,2 +1,6 @@
 int32 sensor_data_queue_length
 float32 sensor_sampling_rate
+bool is_estimating
+bool is_appending_initial_frames
+bool is_self_training
+bool is_supervised_training

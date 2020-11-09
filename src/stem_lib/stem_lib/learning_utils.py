@@ -153,11 +153,11 @@ class ReplayBuffer():
         self.feature_frames_back[state_major_id].append(feature_frame)
         self.embeddings_back[state_major_id].append(embedding)
 
-    def get_feature_frames(self, condition=None):
-        return self._get_samples(self.feature_frames, condition)
+    def get_feature_frames(self, filter_func=None):
+        return self._get_samples(self.feature_frames, filter_func)
     
-    def get_embeddings(self, condition=None):
-        return self._get_samples(self.embeddings, condition)
+    def get_embeddings(self, filter_func=None):
+        return self._get_samples(self.embeddings, filter_func)
     
     def iterate(self):
         for index in range(self.n_states):
@@ -178,9 +178,9 @@ class ReplayBuffer():
         self.feature_frames_back.clear()
         self.embeddings_back.clear()
 
-    def _get_samples(self, source, condition=None):
+    def _get_samples(self, source, filter_func=None):
         """
-        condition : function
+        filter_func : function
             if you want to get positves
             ```
                 lambda idx: idx == anchor_index
@@ -194,7 +194,7 @@ class ReplayBuffer():
         indices = []
         for idx, queue in enumerate(source):
             for ele in queue:
-                if condition is None or condition(idx):
+                if filter_func is None or filter_func(idx):
                     samples.append(ele)
                     indices.append(idx)
         return samples, indices
@@ -295,8 +295,23 @@ class ReplayBuffer():
 #         self.results.put(result)
 #         self.is_running = False
 
-def train_model(model, replay_buffer, ):
-    pass
+def train_model(model, replay_buffer, anchor_frame, anchor_embedding, anchor_state_id):
+    positive_embeddings, _ = replay_buffer.get_embeddings(lambda state_id: state_id == anchor_state_id)
+    negative_embeddings, _ = replay_buffer.get_embeddings(lambda state_id: state_id != anchor_state_id)
+
+    triplets = select_triplets(anchor_embedding, positive_embeddings, negative_embeddings)
+    if len(triplets) <= 0:
+        return None
+    
+    input_frames = [anchor_frame] * len(triplets)
+    target_embeddings = []
+    for anchor, positive, negative in triplets:
+        target_embeddings.append([positive, negative])
+    
+    input_frames = np.array(input_frames)
+    target_embeddings = np.array(target_embeddings)
+    model.fit(input_frames, target_embeddings, batch_size=1)
+    return anchor_frame, anchor_embedding, anchor_state_id
 
 
 def save_model(dir_path, replay_buffer, model):

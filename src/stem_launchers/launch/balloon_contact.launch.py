@@ -22,7 +22,9 @@ def generate_launch_description():
                 'replay_buffer_maxlen': 100,
                 'nmin_samples_replay_buffer': 50,
                 'sensor_sampling_rate_min': 35,
-                'working_dir': '.stem/balloon_contact'
+                'working_dir': '.stem/balloon_contact',
+                'supervise_time_length_min': 0.5,
+                'self_learning_interval_sec': 30
             }],
             # emulate_tty=True,
             output='screen'

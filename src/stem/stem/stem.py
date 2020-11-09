@@ -10,6 +10,7 @@ from concurrent.futures.thread import ThreadPoolExecutor
 from sklearn.cluster import KMeans
 import pickle
 from datetime import datetime
+import queue
 
 from stem_interfaces.msg import GeneralSensorData
 from stem_interfaces.msg import SuperviseSignal
@@ -40,7 +41,7 @@ class STEM(Node):
         self.self_learning_interval_sec = stem_utils.load_parameter(self, 'self_learning_interval_sec', 30)
         
         self.working_dir = pathlib.Path(self.working_dir)
-        self.get_logger().info(f'Using {self.working_dir} as working directory.')
+        self.get_logger().info(f'Using "{self.working_dir}" as working directory.')
 
         try:
             learning_utils.restore_model(self.working_dir)
@@ -78,11 +79,18 @@ class STEM(Node):
         self.save_model_service = self.create_service(SaveModel, 'save_model', self.on_request_save_model)
         self.status = {
             'sensor_data_queue_length': 0,
-            'sensor_sampling_rate': 0
+            'sensor_sampling_rate': 0,
+            'is_estimating': False,
+            'is_appending_initial_frames': False,
+            'is_self_training': False,
+            'is_supervised_training': False
         }
 
         self.sensor_data_sampleing_sw = Stopwatch()
-
+        self.self_learning_sw = Stopwatch()
+        self.supervise_time_length_sw = Stopwatch()
+        self.current_supervised_state_name = 'none'
+        self.supervise_signal_queue = queue.Queue(maxsize=1)
 
         self.sensor_data_queue = deque(maxlen=self.sensor_data_queue_size)
         self.model = learning_utils.make_model(
@@ -93,64 +101,17 @@ class STEM(Node):
         self.initial_frames = []
         self.state_classifier = KMeans(n_clusters=len(self.state_names))
         self.state_name_id_bimapper = learning_utils.StateNameIdBiMapper()
-        self.compute_executor = SingleThreadExecutor()
+        # self.compute_executor = SingleThreadExecutor()
+        self.compute_executor = ThreadPoolExecutor(max_workers=1)
 
         self.sensor_sampling_rate_average = 0
 
-        # self.timer = self.create_timer(0.1, self.test)
-        # self.test_thread_worker = ThreadWorker()
-
         self.get_logger().info('Initializing Completed.')
-
-        # test_replay_buffer = learning_utils.ReplayBuffer(3, 100)
-        # test_replay_buffer.append(0, [0]*10, [0]*128)
-        # test_replay_buffer.append(1, [1]*10, [1]*128)
-        # test_replay_buffer.append(0, [2]*10, [2]*128)
-        # test_replay_buffer.append(2, [3]*10, [3]*128)
-
-        # self.get_logger().info(str(test_replay_buffer.length()))
-
-        # for index, frame, embedding in replay_buffer.popleft_each():
-        #     print('T', index, frame, embedding)
-        #     replay_buffer.append_back_buffer(index + 1, frame, embedding)
-
-        # replay_buffer.swap_buffer()
-
-        # for index, frame, embedding in replay_buffer.iterate():
-        #     print(index, frame, embedding)
-        # X = np.array([[1, 2], [1, 4], [1, 0],
-        #            [10, 2], [10, 4], [10, 0]])
-        # kmeans = KMeans(n_clusters=2, random_state=0).fit(X)
-        # self.get_logger().info(str(kmeans.labels_))
-        # kmeans.predict([[0, 0], [12, 3]])
-        # self.get_logger().info(str(kmeans.cluster_centers_))
-
-        # pkl_filename = "pickle_model.pkl"
-        # with open(pkl_filename, 'wb') as file:
-        #     pickle.dump(kmeans, file)
-
-        # with open(pkl_filename, 'rb') as file:
-        #     pickle_model = pickle.load(file)
-        
-        # self.get_logger().info(str(pickle_model.labels_))
-        # pickle_model.predict([[0, 0], [12, 3]])
-        # self.get_logger().info(str(pickle_model.cluster_centers_))
-
 
     def start(self):
         self.sensor_data_sampleing_sw.start()
+        self.self_learning_sw.start()
 
-    def reset(self):
-        pass
-
-    def test(self, mes):
-        time.sleep(2)
-
-        self.get_logger().info(str(mes))
-
-        # status = {'is_sensor_queue_full': False}
-        # message = stem_utils.fill_message_from_dict(STEMStatus(), status)
-        # self.status_publisher.publish(message)
 
     def on_receive_sensor_data(self, sensor_data):
         if len(sensor_data.segments) != self.sensor_data_segment_size:
@@ -175,35 +136,123 @@ class STEM(Node):
                 if self.replay_buffer.length() < self.nmin_samples_replay_buffer:
                     self.initial_frames.append(self.sensor_data_queue)
                     if len(self.initial_frames) >= self.nmin_samples_replay_buffer:
-                        self.compute_executor.run(
-                            learning_utils.append_initial_frames, 
-                            args=(self.initial_frames, self.replay_buffer, self.model, self.state_classifier),
-                            done_callback=lambda exit_status: self.initial_frames.clear()
-                        )
-                        
+                        if (not self.status['is_appending_initial_frames'] and
+                            not self.status['is_self_training']):
+                            self.status['is_appending_initial_frames'] = True
+                            future = self.compute_executor.submit(
+                                learning_utils.append_initial_frames,
+                                self.initial_frames,
+                                self.replay_buffer,
+                                self.model,
+                                self.state_classifier
+                            )
+                            future.add_done_callback(self.on_appended_initial_frames)
                 else:
-                    self.compute_executor.run(
-                        learning_utils.estimate_state,
-                        args=(self.sensor_data_queue, self.model, self.state_classifier),
-                        done_callback=self.on_estimated
-                    )
+                    is_get_supervise_signal = False
+                    try:
+                        supervised_time, supervised_state_name = self.supervise_signal_queue.get_nowait()
+                        if time.time() - supervised_time < 0.1:
+                            is_get_supervise_signal = True
+                    except queue.Empty:
+                        pass
+                        
+                    if (is_get_supervise_signal and
+                        not self.status['is_appending_initial_frames'] and
+                        not self.status['is_supervised_training']):
+                        self.status['is_supervised_training'] = True
+                        future = self.compute_executor.submit(
+                            self.train_supervised,
+                            self.sensor_data_queue,
+                            supervised_state_name
+                        )
+
+
+                    elif (not self.status['is_estimating'] and
+                        not self.status['is_appending_initial_frames'] and
+                        not self.status['is_self_training']):
+                        self.status['is_estimating'] = True
+                        future = self.compute_executor.submit(
+                            learning_utils.estimate_state,
+                            self.sensor_data_queue,
+                            self.model,
+                            self.state_classifier
+                        )
+                        future.add_done_callback(self.on_estimated)
+
         except Exception as e:
-            pass
+            self.get_logger().error(f'{e}')
 
         finally:
             self.publish_status()
 
+    def on_appended_initial_frames(self, future):
+        self.status['is_appending_initial_frames'] = False
+        self.initial_frames.clear()
 
+        self.publish_status()
     
-    def on_estimated(self, exit_status):
+    def on_estimated(self, future):
         try:
-            state_id, frame, embedding = exit_status.result()
+            state_id, frame, embedding = future.result()
+
+            self.publish_estimation(state_id, str(self.state_name_id_bimapper.get_name(state_id)))
+
+            if self.self_learning_sw.elapsed > self.self_learning_interval_sec:
+                if (not self.status['is_self_training'] and
+                    not self.status['is_supervised_training']):
+                    self.status['is_self_training'] = True
+                    future = self.compute_executor.submit(
+                        learning_utils.train_model,
+                        self.model,
+                        self.replay_buffer,
+                        frame,
+                        embedding,
+                        state_id
+                    )
+                    future.add_done_callback(self.on_trained)
+                self.self_learning_sw.restart()
+
         except Exception as e:
             self.get_logger().error(f'{e}')
-            return
 
-        self.publish_estimation(state_id, str(self.state_name_id_bimapper.get_name(state_id)))
+        finally:
+            self.status['is_estimating'] = False
+            self.publish_status()
+
         
+
+    def on_trained(self, future):
+        try:
+            anchor_frame, anchor_embedding, anchor_state_id = future.result()
+            learning_utils.recal_embeddings(self.model, self.replay_buffer)
+            self.replay_buffer.append(anchor_state_id, anchor_frame, anchor_embedding)
+
+        except Exception as e:
+            self.get_logger().error(f'{e}')
+
+        finally:
+            self.status['is_self_training'] = False
+            self.publish_status()
+
+    def train_supervised(self, frame, supervised_state_name):
+        try:
+            [embedding], _ = self.model(np.array([frame]))
+            [estimated_state_id] = state_classifier.predict([embedding])
+            supervised_state_id = self.state_name_id_bimapper.get_id(supervised_state_name)
+            if supervised_state_id is None:
+                self.state_name_id_bimapper.bind(supervised_state_name, estimated_state_id)
+                supervised_state_id = estimated_state_id
+            learning_utils.train_model(self.model, self.replay_buffer, frame, embedding, supervised_state_id)
+            learning_utils.recal_embeddings(self.model, self.replay_buffer)
+            self.replay_buffer.append(supervised_state_id, frame, embedding)
+
+        except Exception as e:
+            self.get_logger().error(f'{e}')
+
+        finally:
+            self.status['is_supervised_training'] = False
+            self.publish_status()
+
 
     def publish_estimation(self, state_id, state_name):
         estimation = Estimation()
@@ -216,7 +265,19 @@ class STEM(Node):
 
     def on_receive_supervise_signal(self, supervise_signal):
         # self.get_logger().info(supervise_signal.supervised_state_name)
-        pass
+        if self.current_supervised_state_name != supervise_signal.supervised_state_name:
+            self.current_supervised_state_name = supervise_signal.supervised_state_name
+            self.supervise_time_length_sw.restart()
+        
+        if self.supervise_time_length_sw.elapsed > self.supervise_time_length_min:
+            self.supervise_time_length_sw.restart()
+            if self.current_supervised_state_name != 'none':
+                try:
+                    self.supervise_signal_queue.put_nowait(
+                        (time.time(), self.current_supervised_state_name)
+                    )
+                except queue.Full:
+                    pass
 
     def on_request_save_model(self, request, response):
         try:
