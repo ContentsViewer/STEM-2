@@ -11,6 +11,7 @@ from sklearn.cluster import KMeans
 import pickle
 from datetime import datetime
 import queue
+import random
 
 from stem_interfaces.msg import GeneralSensorData
 from stem_interfaces.msg import SuperviseSignal
@@ -18,8 +19,8 @@ from stem_interfaces.msg import STEMStatus
 from stem_interfaces.msg import Estimation
 from stem_interfaces.srv import SaveModel
 
-from stem_lib.stdlib.concurrent.thread import SingleThreadExecutor
 from stem_lib.stdlib.stopwatch import Stopwatch
+from stem_lib.stdlib import bimapper
 from stem_lib import utils as stem_utils
 from stem_lib import learning_utils
 
@@ -101,7 +102,6 @@ class STEM(Node):
         self.initial_frames = []
         self.state_classifier = KMeans(n_clusters=len(self.state_names))
         self.state_name_id_bimapper = learning_utils.StateNameIdBiMapper()
-        # self.compute_executor = SingleThreadExecutor()
         self.compute_executor = ThreadPoolExecutor(max_workers=1)
 
         self.sensor_sampling_rate_average = 0
@@ -237,11 +237,16 @@ class STEM(Node):
     def train_supervised(self, frame, supervised_state_name):
         try:
             [embedding], _ = self.model(np.array([frame]))
-            [estimated_state_id] = state_classifier.predict([embedding])
+            [estimated_state_id] = self.state_classifier.predict([embedding])
             supervised_state_id = self.state_name_id_bimapper.get_id(supervised_state_name)
             if supervised_state_id is None:
-                self.state_name_id_bimapper.bind(supervised_state_name, estimated_state_id)
-                supervised_state_id = estimated_state_id
+                try:
+                    self.state_name_id_bimapper.bind(supervised_state_name, estimated_state_id)
+                    supervised_state_id = estimated_state_id
+                except bimapper.AlreadyBoundException:
+                    supervised_state_id = random.choice(list(set(range(len(self.state_names))) - set([estimated_state_id])))
+                    self.get_logger().info(f'estimated id "{estimated_state_id}" is Already Bounded. pick up id randomly in others. id "{supervised_state_id}"')
+
             learning_utils.train_model(self.model, self.replay_buffer, frame, embedding, supervised_state_id)
             learning_utils.recal_embeddings(self.model, self.replay_buffer)
             self.replay_buffer.append(supervised_state_id, frame, embedding)
@@ -281,7 +286,7 @@ class STEM(Node):
 
     def on_request_save_model(self, request, response):
         try:
-            learning_utils.save_model(self.working_dir, self.replay_buffer, self.model)
+            learning_utils.save_model(self.working_dir, self.replay_buffer, self.model, self.state_classifier)
         except Exception as e:
             response.success = False
             self.get_logger().error(f'Failed to save model: {e}')

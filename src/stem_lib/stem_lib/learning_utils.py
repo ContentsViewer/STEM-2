@@ -131,7 +131,15 @@ class StateNameIdBiMapper():
         
     def bind(self, state_name, state_id):
         self.bimapper.bind(state_name, state_id)
+    
+    @property
+    def name2id(self):
+        return self.bimapper.x2y
 
+    @property
+    def id2name(self):
+        return self.bimapper.y2x
+    
 
 class ReplayBuffer():
     def __init__(self, n_states, queue_maxlen):
@@ -314,11 +322,14 @@ def train_model(model, replay_buffer, anchor_frame, anchor_embedding, anchor_sta
     return anchor_frame, anchor_embedding, anchor_state_id
 
 
-def save_model(dir_path, replay_buffer, model):
+def save_model(dir_path, replay_buffer, model, state_classifier):
     dir_path.mkdir(parents=True, exist_ok=True)
 
     with (dir_path / 'replay_buffer.pkl').open('wb') as file:
         pickle.dump(replay_buffer, file)
+    
+    with (dir_path / 'state_classifier.pkl').open('wb') as file:
+        pickle.dump(state_classifier, file)
 
     model.save(dir_path / 'model')
 
