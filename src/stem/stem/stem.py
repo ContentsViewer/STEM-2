@@ -89,9 +89,16 @@ class STEM(Node):
 
         self.sensor_data_sampleing_sw = Stopwatch()
         self.self_learning_sw = Stopwatch()
-        self.supervise_time_length_sw = Stopwatch()
-        self.current_supervised_state_name = 'none'
-        self.supervise_signal_queue = queue.Queue(maxsize=1)
+
+        self.supervise_control_block = {
+            'is_supervised': False,
+            'is_end_supervising': False,
+            'last_supervised_time': 0.0,
+            'current_supervised_state_name': 'none',
+            'next_supervised_state_name': 'none'
+        }
+        self.supervise_frame_buffer = []
+        # self.supervise_time_length_sw = Stopwatch()
 
         self.sensor_data_queue = deque(maxlen=self.sensor_data_queue_size)
         self.model = learning_utils.make_model(
@@ -148,26 +155,34 @@ class STEM(Node):
                             )
                             future.add_done_callback(self.on_appended_initial_frames)
                 else:
-                    is_get_supervise_signal = False
-                    try:
-                        supervised_time, supervised_state_name = self.supervise_signal_queue.get_nowait()
-                        if time.time() - supervised_time < 0.1:
-                            is_get_supervise_signal = True
-                    except queue.Empty:
-                        pass
+                    # We got the enough sensor data and replay buffer.
+
+                    if self.supervise_control_block['is_supervised']:
+                        self.supervise_frame_buffer.append(self.sensor_data_queue)
+                        if (
+                            time.time() - self.supervise_control_block['last_supervised_time'] > 0.2
+                            or self.supervise_control_block['current_supervised_state_name'] != self.supervise_control_block['next_supervised_state_name'] 
+                        ):
+                            self.supervise_control_block['is_supervised'] = False
+                            
+                            random.shuffle(self.supervise_frame_buffer)
+                            if (
+                                not self.status['is_appending_initial_frames']
+                                and not self.status['is_supervised_training']
+                            ):
+                                self.status['is_supervised_training'] = True
+                                future = self.compute_executor.submit(
+                                    self.train_supervised,
+                                    np.array(self.supervise_frame_buffer[0:3]),
+                                    self.supervise_control_block['current_supervised_state_name']
+                                )
+
+                            self.supervise_frame_buffer.clear()
                         
-                    if (is_get_supervise_signal and
-                        not self.status['is_appending_initial_frames'] and
-                        not self.status['is_supervised_training']):
-                        self.status['is_supervised_training'] = True
-                        future = self.compute_executor.submit(
-                            self.train_supervised,
-                            self.sensor_data_queue,
-                            supervised_state_name
-                        )
+                        self.supervise_control_block['current_supervised_state_name'] = self.supervise_control_block['next_supervised_state_name'] 
 
 
-                    elif (not self.status['is_estimating'] and
+                    if (not self.status['is_estimating'] and
                         not self.status['is_appending_initial_frames'] and
                         not self.status['is_self_training']):
                         self.status['is_estimating'] = True
@@ -234,22 +249,27 @@ class STEM(Node):
             self.status['is_self_training'] = False
             self.publish_status()
 
-    def train_supervised(self, frame, supervised_state_name):
+    # @param frames numpy.array
+    def train_supervised(self, frames, supervised_state_name):
         try:
-            [embedding], _ = self.model(np.array([frame]))
-            [estimated_state_id] = self.state_classifier.predict([embedding])
+            embeddings, _ = self.model(frames)
+            estimated_state_ids = self.state_classifier.predict(embeddings)
             supervised_state_id = self.state_name_id_bimapper.get_id(supervised_state_name)
             if supervised_state_id is None:
                 try:
-                    self.state_name_id_bimapper.bind(supervised_state_name, estimated_state_id)
-                    supervised_state_id = estimated_state_id
+                    self.state_name_id_bimapper.bind(supervised_state_name, estimated_state_ids[0])
+                    supervised_state_id = estimated_state_ids[0]
                 except bimapper.AlreadyBoundException:
-                    supervised_state_id = random.choice(list(set(range(len(self.state_names))) - set([estimated_state_id])))
-                    self.get_logger().info(f'estimated id "{estimated_state_id}" is Already Bounded. pick up id randomly in others. id "{supervised_state_id}"')
+                    supervised_state_id = random.choice(list(set(range(len(self.state_names))) - set(self.state_name_id_bimapper.id2name.keys())))
+                    self.state_name_id_bimapper.bind(supervised_state_name, supervised_state_id)
+                    self.get_logger().info(f'estimated id "{estimated_state_ids[0]}" is Already Bounded. pick up and bind id randomly from not-bounded ids. id "{supervised_state_id}"')
 
-            learning_utils.train_model(self.model, self.replay_buffer, frame, embedding, supervised_state_id)
+            for frame, embedding, estimated_state_id in zip(frames, embeddings, estimated_state_ids):
+                learning_utils.train_model(self.model, self.replay_buffer, frame, embedding, supervised_state_id)
+            
             learning_utils.recal_embeddings(self.model, self.replay_buffer)
-            self.replay_buffer.append(supervised_state_id, frame, embedding)
+            for frame, embedding in zip(frames, embeddings):
+                self.replay_buffer.append(supervised_state_id, frame, embedding)
 
         except Exception as e:
             self.get_logger().error(f'{e}')
@@ -265,24 +285,23 @@ class STEM(Node):
         estimation.state_id = state_id
         self.estimation_publisher.publish(estimation)
 
+
     def publish_status(self):
         self.status_publisher.publish(stem_utils.fill_message_from_dict(STEMStatus(), self.status))
 
+
     def on_receive_supervise_signal(self, supervise_signal):
-        # self.get_logger().info(supervise_signal.supervised_state_name)
-        if self.current_supervised_state_name != supervise_signal.supervised_state_name:
-            self.current_supervised_state_name = supervise_signal.supervised_state_name
-            self.supervise_time_length_sw.restart()
-        
-        if self.supervise_time_length_sw.elapsed > self.supervise_time_length_min:
-            self.supervise_time_length_sw.restart()
-            if self.current_supervised_state_name != 'none':
-                try:
-                    self.supervise_signal_queue.put_nowait(
-                        (time.time(), self.current_supervised_state_name)
-                    )
-                except queue.Full:
-                    pass
+        if supervise_signal.supervised_state_name == 'none-supervised':
+            return
+
+        if not self.supervise_control_block['is_supervised']:
+            # first signal of this state nameS
+            self.supervise_control_block['current_supervised_state_name'] = supervise_signal.supervised_state_name
+
+        self.supervise_control_block['next_supervised_state_name'] = supervise_signal.supervised_state_name
+        self.supervise_control_block['is_supervised'] = True
+        self.supervise_control_block['last_supervised_time'] = time.time()
+
 
     def on_request_save_model(self, request, response):
         try:

@@ -137,7 +137,7 @@ class STEMController(Plugin):
         except queue.Empty:
             pass
 
-        supervised_state_name = 'none'
+        supervised_state_name = 'none-supervised'
         for supervise_button in self._widget.supervise_buttons:
             if supervise_button.is_pressed:
                 supervised_state_name = supervise_button.state_name

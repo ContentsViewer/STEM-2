@@ -17,14 +17,14 @@ def generate_launch_description():
             executable='stem',
             parameters=[{
                 'sensor_data_queue_size': 100,
-                'state_names': ["touched", "not_touched"],
+                'state_names': ["inflating", "shrinking", "non"],
                 'sensor_data_segment_size': 2,
                 'replay_buffer_maxlen': 100,
                 'nmin_samples_replay_buffer': 50,
                 'sensor_sampling_rate_min': 35,
                 'working_dir': '.stem/balloon_contact',
                 'supervise_time_length_min': 0.5,
-                'self_learning_interval_sec': 30
+                'self_learning_interval_sec': float('inf')
             }],
             # emulate_tty=True,
             output='screen'
