@@ -24,7 +24,7 @@ def generate_launch_description():
                 'sensor_sampling_rate_min': 35,
                 'working_dir': '.stem/balloon_contact',
                 'supervise_time_length_min': 0.5,
-                'self_learning_interval_sec': float('inf')
+                'self_learning_interval_sec': 5
             }],
             # emulate_tty=True,
             output='screen'
