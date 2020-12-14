@@ -100,7 +100,7 @@
     </layout>
    </item>
    <item>
-    <widget class="QLabel" name="supervised_state_name">
+    <widget class="QLabel" name="supervise_state_name">
      <property name="font">
       <font>
        <pointsize>21</pointsize>

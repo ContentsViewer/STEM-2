@@ -1,1 +1,1 @@
-string supervised_state_name
+string supervise_state_name

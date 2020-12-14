@@ -42,6 +42,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/STEMStatus.msg"
   "msg/Estimation.msg"
   "srv/SaveModel.srv"
+  "srv/SaveSamples.srv"
 )
 
 

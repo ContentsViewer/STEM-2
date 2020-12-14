@@ -94,8 +94,8 @@ class STEM(Node):
             'is_supervised': False,
             'is_end_supervising': False,
             'last_supervised_time': 0.0,
-            'current_supervised_state_name': 'none',
-            'next_supervised_state_name': 'none'
+            'current_supervise_state_name': 'none',
+            'next_supervise_state_name': 'none'
         }
         self.supervise_frame_buffer = []
         # self.supervise_time_length_sw = Stopwatch()
@@ -161,7 +161,7 @@ class STEM(Node):
                         self.supervise_frame_buffer.append(self.sensor_data_queue)
                         if (
                             time.time() - self.supervise_control_block['last_supervised_time'] > 0.2
-                            or self.supervise_control_block['current_supervised_state_name'] != self.supervise_control_block['next_supervised_state_name'] 
+                            or self.supervise_control_block['current_supervise_state_name'] != self.supervise_control_block['next_supervise_state_name'] 
                         ):
                             self.supervise_control_block['is_supervised'] = False
                             
@@ -174,12 +174,12 @@ class STEM(Node):
                                 future = self.compute_executor.submit(
                                     self.train_supervised,
                                     np.array(self.supervise_frame_buffer[0:3]),
-                                    self.supervise_control_block['current_supervised_state_name']
+                                    self.supervise_control_block['current_supervise_state_name']
                                 )
 
                             self.supervise_frame_buffer.clear()
                         
-                        self.supervise_control_block['current_supervised_state_name'] = self.supervise_control_block['next_supervised_state_name'] 
+                        self.supervise_control_block['current_supervise_state_name'] = self.supervise_control_block['next_supervise_state_name'] 
 
 
                     if (not self.status['is_estimating'] and
@@ -250,18 +250,18 @@ class STEM(Node):
             self.publish_status()
 
     # @param frames numpy.array
-    def train_supervised(self, frames, supervised_state_name):
+    def train_supervised(self, frames, supervise_state_name):
         try:
             embeddings, _ = self.model(frames)
             estimated_state_ids = self.state_classifier.predict(embeddings)
-            supervised_state_id = self.state_name_id_bimapper.get_id(supervised_state_name)
+            supervised_state_id = self.state_name_id_bimapper.get_id(supervise_state_name)
             if supervised_state_id is None:
                 try:
-                    self.state_name_id_bimapper.bind(supervised_state_name, estimated_state_ids[0])
+                    self.state_name_id_bimapper.bind(supervise_state_name, estimated_state_ids[0])
                     supervised_state_id = estimated_state_ids[0]
                 except bimapper.AlreadyBoundException:
                     supervised_state_id = random.choice(list(set(range(len(self.state_names))) - set(self.state_name_id_bimapper.id2name.keys())))
-                    self.state_name_id_bimapper.bind(supervised_state_name, supervised_state_id)
+                    self.state_name_id_bimapper.bind(supervise_state_name, supervised_state_id)
                     self.get_logger().info(f'estimated id "{estimated_state_ids[0]}" is Already Bounded. pick up and bind id randomly from not-bounded ids. id "{supervised_state_id}"')
 
             for frame, embedding, estimated_state_id in zip(frames, embeddings, estimated_state_ids):
@@ -291,14 +291,14 @@ class STEM(Node):
 
 
     def on_receive_supervise_signal(self, supervise_signal):
-        if supervise_signal.supervised_state_name == 'none-supervised':
+        if supervise_signal.supervise_state_name == 'none-supervised':
             return
 
         if not self.supervise_control_block['is_supervised']:
             # first signal of this state nameS
-            self.supervise_control_block['current_supervised_state_name'] = supervise_signal.supervised_state_name
+            self.supervise_control_block['current_supervise_state_name'] = supervise_signal.supervise_state_name
 
-        self.supervise_control_block['next_supervised_state_name'] = supervise_signal.supervised_state_name
+        self.supervise_control_block['next_supervise_state_name'] = supervise_signal.supervise_state_name
         self.supervise_control_block['is_supervised'] = True
         self.supervise_control_block['last_supervised_time'] = time.time()
 

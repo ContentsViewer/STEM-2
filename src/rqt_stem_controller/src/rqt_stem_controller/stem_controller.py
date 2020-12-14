@@ -137,14 +137,14 @@ class STEMController(Plugin):
         except queue.Empty:
             pass
 
-        supervised_state_name = 'none-supervised'
+        supervise_state_name = 'none-supervised'
         for supervise_button in self._widget.supervise_buttons:
             if supervise_button.is_pressed:
-                supervised_state_name = supervise_button.state_name
+                supervise_state_name = supervise_button.state_name
                 break
         # print('test')
         supervise_signal = SuperviseSignal()
-        supervise_signal.supervised_state_name = supervised_state_name
+        supervise_signal.supervise_state_name = supervise_state_name
         self._supervise_signal_publisher.publish(supervise_signal)
 
 
