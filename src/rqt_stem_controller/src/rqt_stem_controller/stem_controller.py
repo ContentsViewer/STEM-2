@@ -63,7 +63,7 @@ class STEMController(Plugin):
         # self._timer = self._node.create_timer(0.02, self.update)
     
 
-        self._stem_get_parameters_client = self._node.create_client(GetParameters, 'stem/get_parameters')
+        self._stem_get_parameters_client = self._node.create_client(GetParameters, 'stem_parameter_server/get_parameters')
         self.stem_params = {
             'state_names': None,
             'sensor_sampling_rate_min': None
