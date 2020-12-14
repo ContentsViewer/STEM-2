@@ -343,133 +343,133 @@ def restore_model(dir_path):
     return replay_buffer
 
 
-class Trainor():
-    def __init__(self, precedents_dict=None):
-        self.is_running = False
-        self.precedents_dict = precedents_dict
-        self.results = queue.Queue()
+# class Trainor():
+#     def __init__(self, precedents_dict=None):
+#         self.is_running = False
+#         self.precedents_dict = precedents_dict
+#         self.results = queue.Queue()
 
-    def run(self, model=None, anchor=None):
-        if self.is_running:
-            return
-        self.is_running = True
-        self.model = model
-        self.anchor = anchor
-        self.worker_thread = threading.Thread(target=self.worker)
-        self.worker_thread.start()
+#     def run(self, model=None, anchor=None):
+#         if self.is_running:
+#             return
+#         self.is_running = True
+#         self.model = model
+#         self.anchor = anchor
+#         self.worker_thread = threading.Thread(target=self.worker)
+#         self.worker_thread.start()
 
-    def worker(self):
-        positive_embeddings = []
-        negative_embeddings = []
-        anchor_state = get_major_state(self.anchor)
+#     def worker(self):
+#         positive_embeddings = []
+#         negative_embeddings = []
+#         anchor_state = get_major_state(self.anchor)
 
-        for state, precedents in enumerate(self.precedents_dict):
-            if state == len(self.precedents_dict) - 1:
-                break
-            if state == anchor_state:
-                positive_embeddings.extend(
-                    [precedent.embedding for precedent in precedents])
-            else:
-                negative_embeddings.extend(
-                    [precedent.embedding for precedent in precedents])
+#         for state, precedents in enumerate(self.precedents_dict):
+#             if state == len(self.precedents_dict) - 1:
+#                 break
+#             if state == anchor_state:
+#                 positive_embeddings.extend(
+#                     [precedent.embedding for precedent in precedents])
+#             else:
+#                 negative_embeddings.extend(
+#                     [precedent.embedding for precedent in precedents])
 
-        if len(positive_embeddings) <= 0 or len(negative_embeddings) <= 0:
-            self.is_running = False
-            return
+#         if len(positive_embeddings) <= 0 or len(negative_embeddings) <= 0:
+#             self.is_running = False
+#             return
 
-        triplets = select_triplets(
-            self.anchor.embedding, positive_embeddings, negative_embeddings)
-        if len(triplets) <= 0:
-            self.is_running = False
-            return
-        inputs = [self.anchor.inputs[0]] * len(triplets)
-        targets = []
-        for anchor, positive, negative in triplets:
-            targets.append([positive, negative])
+#         triplets = select_triplets(
+#             self.anchor.embedding, positive_embeddings, negative_embeddings)
+#         if len(triplets) <= 0:
+#             self.is_running = False
+#             return
+#         inputs = [self.anchor.inputs[0]] * len(triplets)
+#         targets = []
+#         for anchor, positive, negative in triplets:
+#             targets.append([positive, negative])
 
-        inputs = np.array(inputs)
-        targets = np.array(targets)
+#         inputs = np.array(inputs)
+#         targets = np.array(targets)
 
-        self.model.fit(inputs, targets, batch_size=1)
-        self.is_running = False
-
-
-def nearest(a, b):
-    na, nb = len(a), len(b)
-
-    # Combinations of a and b
-    comb = product(range(na), range(nb))
-
-    # [[distance, index number(a), index number(b)], ... ]
-    l = [[np.linalg.norm(a[ia] - b[ib]), ia, ib] for ia, ib in comb]
-
-    # Sort with distance
-    l.sort(key=lambda x: x[0])
-
-    pairs = []
-    for _ in range(min(na, nb)):
-        m, ia, ib = l[0]
-        pairs.append([ia, ib])
-        # Remove items with same index number
-        l = list(filter(lambda x: x[1] != ia and x[2] != ib, l))
-
-    return pairs
+#         self.model.fit(inputs, targets, batch_size=1)
+#         self.is_running = False
 
 
-def get_major_state(segment):
-    state = segment.get('supervised_state')
-    if state is None:
-        state = segment.get('estimated_state')
+# def nearest(a, b):
+#     na, nb = len(a), len(b)
 
-    return state
+#     # Combinations of a and b
+#     comb = product(range(na), range(nb))
+
+#     # [[distance, index number(a), index number(b)], ... ]
+#     l = [[np.linalg.norm(a[ia] - b[ib]), ia, ib] for ia, ib in comb]
+
+#     # Sort with distance
+#     l.sort(key=lambda x: x[0])
+
+#     pairs = []
+#     for _ in range(min(na, nb)):
+#         m, ia, ib = l[0]
+#         pairs.append([ia, ib])
+#         # Remove items with same index number
+#         l = list(filter(lambda x: x[1] != ia and x[2] != ib, l))
+
+#     return pairs
 
 
-def make_visualized_graph_plots(precedents_dict, current_segment):
-    def make_plot(segment, reduced, min_pos, max_pos):
-        plot = dotdict()
-        plot.position = np.array(reduced)
-        if min_pos[0] is None or min_pos[0] > reduced[0]:
-            min_pos[0] = reduced[0]
-        if min_pos[1] is None or min_pos[1] > reduced[1]:
-            min_pos[1] = reduced[1]
-        if max_pos[0] is None or max_pos[0] < reduced[0]:
-            max_pos[0] = reduced[0]
-        if max_pos[1] is None or max_pos[1] < reduced[1]:
-            max_pos[1] = reduced[1]
+# def get_major_state(segment):
+#     state = segment.get('supervised_state')
+#     if state is None:
+#         state = segment.get('estimated_state')
+
+#     return state
+
+
+# def make_visualized_graph_plots(precedents_dict, current_segment):
+#     def make_plot(segment, reduced, min_pos, max_pos):
+#         plot = dotdict()
+#         plot.position = np.array(reduced)
+#         if min_pos[0] is None or min_pos[0] > reduced[0]:
+#             min_pos[0] = reduced[0]
+#         if min_pos[1] is None or min_pos[1] > reduced[1]:
+#             min_pos[1] = reduced[1]
+#         if max_pos[0] is None or max_pos[0] < reduced[0]:
+#             max_pos[0] = reduced[0]
+#         if max_pos[1] is None or max_pos[1] < reduced[1]:
+#             max_pos[1] = reduced[1]
         
-        plot.estimated_state = segment.get('estimated_state')
-        plot.supervised_state = segment.get('supervised_state')
+#         plot.estimated_state = segment.get('estimated_state')
+#         plot.supervised_state = segment.get('supervised_state')
 
-        return plot, min_pos, max_pos
+#         return plot, min_pos, max_pos
 
-    plots = []
-    meta = dotdict()
-    embeddings = []
+#     plots = []
+#     meta = dotdict()
+#     embeddings = []
 
-    for precedents in precedents_dict:
-        embeddings.extend([precedent.embedding for precedent in precedents])
+#     for precedents in precedents_dict:
+#         embeddings.extend([precedent.embedding for precedent in precedents])
 
-    if len(embeddings) < 2:
-        return None, None
+#     if len(embeddings) < 2:
+#         return None, None
 
-    if current_segment is not None:
-        embeddings.append(current_segment.embedding)
+#     if current_segment is not None:
+#         embeddings.append(current_segment.embedding)
         
-    pca = PCA(n_components=2)
-    reduced = pca.fit_transform(embeddings)
-    meta.min, meta.max = [None, None], [None, None]
+#     pca = PCA(n_components=2)
+#     reduced = pca.fit_transform(embeddings)
+#     meta.min, meta.max = [None, None], [None, None]
 
-    idx = 0
-    for precedents in precedents_dict:
-        for precedent in precedents:
-            plot, meta.min, meta.max = make_plot(precedent, reduced[idx], meta.min, meta.max)
-            plots.append(plot)
-            idx += 1
+#     idx = 0
+#     for precedents in precedents_dict:
+#         for precedent in precedents:
+#             plot, meta.min, meta.max = make_plot(precedent, reduced[idx], meta.min, meta.max)
+#             plots.append(plot)
+#             idx += 1
 
-    if current_segment is not None:
-        plot, meta.min, meta.max = make_plot(current_segment, reduced[idx], meta.min, meta.max)
-        plots.append(plot)
+#     if current_segment is not None:
+#         plot, meta.min, meta.max = make_plot(current_segment, reduced[idx], meta.min, meta.max)
+#         plots.append(plot)
 
-    meta.min = np.array(meta.min)
-    meta.max = np.array(meta.max)
-    return meta, plots
+#     meta.min = np.array(meta.min)
+#     meta.max = np.array(meta.max)
+#     return meta, plots
