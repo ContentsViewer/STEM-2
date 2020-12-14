@@ -88,9 +88,17 @@ class StemStateSampler(Node):
     
         self.status['sensor_sampling_rate'] = self.sensor_sampleing_watchdog.sampling_rate
 
-        changed, state_name = self.supervise_state_listener.has_changed(timeout=0.2)
-        if changed:
-            self.get_logger().info(str(state_name))
+        self.sensor_data_queue.append(sensor_data.segments)
+        self.status['sensor_data_queue_length'] = len(self.sensor_data_queue)
+
+        if len(self.sensor_data_queue) == self.sensor_data_queue.maxlen:
+            changed, state_name = self.supervise_state_listener.has_changed(timeout=0.2)
+            if changed and state_name is not None:
+                self.sample_dict[state_name].append(self.sensor_data_queue)
+
+                self.get_logger().info(f'append data into "{state_name}"')
+                each_length = {name: len(frames) for name, frames in self.sample_dict.items()}
+                self.get_logger().info(f'each_length: \n{each_length}')
 
         self.publish_status()
 
@@ -113,13 +121,14 @@ class StemStateSampler(Node):
         #     self.get_logger().error(f'Failed to save model: {e}')
         # else:
         #     response.success = True
+        self.get_logger().info('Saving samples...')
         self.working_dir.mkdir(parents=True, exist_ok=True)
 
         with (self.working_dir / 'sample_dict.pkl').open('wb') as file:
             pickle.dump(self.sample_dict, file)
         
+        self.get_logger().info('Saving samples... Done')
         response.success = True
-        self.get_logger().info('Saving samples...')
         return response
 
 def main(args=None):
