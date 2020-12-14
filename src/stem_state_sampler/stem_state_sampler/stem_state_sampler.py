@@ -5,6 +5,8 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile
 
 from collections import deque
+import pickle
+import pathlib
 
 from stem_interfaces.msg import STEMStatus
 from stem_interfaces.msg import GeneralSensorData
@@ -29,6 +31,9 @@ class StemStateSampler(Node):
         self.state_names = stem_utils.load_parameter(self, 'state_names', ['touched', 'not_touched'])
         self.sensor_data_segment_size = stem_utils.load_parameter(self, 'sensor_data_segment_size', 2)
         self.sensor_sampling_rate_min = stem_utils.load_parameter(self, 'sensor_sampling_rate_min', 35)
+
+        self.working_dir = pathlib.Path(self.working_dir)
+        self.get_logger().info(f'Using "{self.working_dir}" as working directory.')
 
         self.sensor_receiver = self.create_subscription(
             GeneralSensorData,
@@ -67,6 +72,8 @@ class StemStateSampler(Node):
 
         self.supervise_state_listener = stem_utils.StateChangeListener()
 
+        self.sample_dict = {name: [] for name in self.state_names}
+        
         self.get_logger().info('Ready.')
 
     def start(self):
@@ -92,7 +99,7 @@ class StemStateSampler(Node):
         if supervise_signal.supervise_state_name == 'none-supervised':
             self.supervise_state_listener.update(None)
             return
-        self.supervise_state_listener(supervise_signal.supervise_state_name)
+        self.supervise_state_listener.update(supervise_signal.supervise_state_name)
     
     def publish_status(self):
         self.status_publisher.publish(stem_utils.fill_message_from_dict(STEMStatus(), self.status))
@@ -106,6 +113,11 @@ class StemStateSampler(Node):
         #     self.get_logger().error(f'Failed to save model: {e}')
         # else:
         #     response.success = True
+        self.working_dir.mkdir(parents=True, exist_ok=True)
+
+        with (self.working_dir / 'sample_dict.pkl').open('wb') as file:
+            pickle.dump(self.sample_dict, file)
+        
         response.success = True
         self.get_logger().info('Saving samples...')
         return response

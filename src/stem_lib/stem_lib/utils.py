@@ -63,10 +63,10 @@ class StateChangeListener:
 
     def update(self, state):
         
-        # except first state update
-        if (self._last_update_time is not None
-            and self._current_state != state):
+        if self._last_update_time is None:
+            pass
 
+        elif self._current_state != state:
             self._last_state = self._current_state
             self._has_changed = True
 
