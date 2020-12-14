@@ -10,8 +10,19 @@ def main(args):
 
     with (sample_dict_path).open('rb') as file:
         sample_dict = pickle.load(file)
-    
-    print(sample_dict)
+
+    each_length = {name: len(frames) for name, frames in sample_dict.items()}
+    print(f'each_length: \n{each_length}')
+    # print(sample_dict['non'])
+    # sample_dict['non'] = sample_dict['non'][0:25]
+
+    # each_length = {name: len(frames) for name, frames in sample_dict.items()}
+    # print(f'each_length: \n{each_length}')
+    # print(sample_dict['non'])
+
+    # with (sample_dict_path).open('wb') as file:
+    #     pickle.dump(sample_dict, file)
+    # print(sample_dict)
 
 def parse_arguments(argv):
     parser = argparse.ArgumentParser()
