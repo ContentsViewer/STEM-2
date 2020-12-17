@@ -92,13 +92,15 @@ class StemStateSampler(Node):
         self.status['sensor_data_queue_length'] = len(self.sensor_data_queue)
 
         if len(self.sensor_data_queue) == self.sensor_data_queue.maxlen:
-            changed, state_name = self.supervise_state_listener.has_changed(timeout=0.2)
-            if changed and state_name is not None:
-                self.sample_dict[state_name].append(self.sensor_data_queue)
+            is_active, has_changed, state_name = self.supervise_state_listener.fetch(timeout=0.2)
 
-                self.get_logger().info(f'append data into "{state_name}"')
-                each_length = {name: len(frames) for name, frames in self.sample_dict.items()}
-                self.get_logger().info(f'each_length: \n{each_length}')
+            if is_active and state_name is not None:
+                if has_changed:
+                    self.get_logger().info(f'appended data into "{state_name}"')
+                    each_length = {name: len(frames) for name, frames in self.sample_dict.items()}
+                    self.get_logger().info(f'each_length: \n{each_length}')
+                else:
+                    self.sample_dict[state_name].append(self.sensor_data_queue)
 
         self.publish_status()
 

@@ -4,6 +4,7 @@ import pickle
 import pathlib
 
 
+
 def main(args):
 
     sample_dict_path = pathlib.Path(args.sample_dict)
@@ -13,6 +14,15 @@ def main(args):
 
     each_length = {name: len(frames) for name, frames in sample_dict.items()}
     print(f'each_length: \n{each_length}')
+
+    # 
+    # train と test に分ける
+
+
+    # train
+
+    # test
+
     # print(sample_dict['non'])
     # sample_dict['non'] = sample_dict['non'][0:25]
 

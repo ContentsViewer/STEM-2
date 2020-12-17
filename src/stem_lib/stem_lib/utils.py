@@ -47,29 +47,34 @@ class StateChangeListener:
         self._last_update_time = None
         self._current_state = None
         self._last_state = None
+        self._is_active = False
         self._has_changed = False
 
-    def has_changed(self, timeout=float('inf')):
-        if self._last_update_time is None:
-            return False, None
+    def fetch(self, timeout=float('inf')):
+        is_active = self._is_active
+        has_changed = self._has_changed
+        state = self._current_state
+
+        if not is_active:
+            return is_active, has_changed, state
 
         if (time.time() - self._last_update_time > timeout
             or self._has_changed):
             self._has_changed = False
-            return True, self._last_state
+            has_changed = True
+            state = self._last_state
+        else:
+            state = self._current_state
+
+        return is_active, has_changed, state
         
-        return False, None
-
-
     def update(self, state):
-        
-        if self._last_update_time is None:
-            pass
-
-        elif self._current_state != state:
+        if (self._is_active
+            and self._current_state != state):
             self._last_state = self._current_state
             self._has_changed = True
 
+        self._is_active = True
         self._current_state = state
         self._last_update_time = time.time()
 
