@@ -4,6 +4,9 @@ import pickle
 import pathlib
 import random
 import math
+import numpy as np
+from numpy import linalg
+import time
 
 from stem_lib import learning_utils
 
@@ -67,8 +70,6 @@ def main(args):
     # print(len(train_data))
     # print(train_data[0])
 
-
-
     
     for batch in batches:
         for name, frames in batch.items():
@@ -77,7 +78,17 @@ def main(args):
     # train
     model = learning_utils.make_model(frame_size, segment_size)
 
-    
+    print('evaluate')
+    evaluate(model, sample_dict)
+
+    for batch in batches:
+
+        print('train')
+        for step in range(3):
+            train_per_batch(batch, model)
+
+        print('evaluate')
+        evaluate(model, sample_dict)
 
     # test
 
@@ -91,6 +102,63 @@ def main(args):
     # with (sample_dict_path).open('wb') as file:
     #     pickle.dump(sample_dict, file)
     # print(sample_dict)
+
+def train_per_batch(batch, model):
+    embedding_dict = {}
+    for name, frames in batch.items():
+        embedding_dict[name], _ = model(np.array(frames))
+    
+    input_frames = []
+    target_embeddings = []
+    for anchor_name, frames in batch.items():
+        for anchor_idx, anchor_frame in enumerate(frames):
+            anchor_embedding = embedding_dict[name][anchor_idx]
+            positive_embeddings = get_embeddings(embedding_dict, lambda name, idx: name == anchor_name and idx != anchor_idx )
+            negative_embeddings = get_embeddings(embedding_dict, lambda name, idx: name != anchor_name)
+
+            triplets = learning_utils.select_triplets(anchor_embedding, positive_embeddings, negative_embeddings)
+
+            for anchor_embedding, positive_embedding, negative_embedding in triplets:
+                input_frames.append(anchor_frame)
+                target_embeddings.append([positive_embedding, negative_embedding])
+
+
+            # print(anchor_name, len(positive_embeddings), len(negative_embeddings))
+
+    input_frames = np.array(input_frames)
+    target_embeddings = np.array(target_embeddings)
+    print(len(input_frames), len(target_embeddings))
+
+    model.fit(input_frames, target_embeddings, batch_size=1)
+
+def evaluate(model, test_sample_dict):
+    embedding_dict = {}
+    for name, frames in test_sample_dict.items():
+        embedding_dict[name], _ = model(np.array(frames))
+    
+    for anchor_name, frames in test_sample_dict.items():
+        for anchor_idx, anchor_frame in enumerate(frames):
+            print(anchor_name)
+            anchor_embedding = embedding_dict[name][anchor_idx]
+            positive_embeddings = get_embeddings(embedding_dict, lambda name, idx: name == anchor_name and idx != anchor_idx )
+            negative_embeddings = get_embeddings(embedding_dict, lambda name, idx: name != anchor_name)
+
+            anchor_embedding = np.array(anchor_embedding)
+            positive_embeddings = np.array(positive_embeddings)
+            negative_embeddings = np.array(negative_embeddings)
+            print(anchor_embedding[0],anchor_embedding[1],anchor_embedding[2] )
+            print('p: ', linalg.norm(anchor_embedding - positive_embeddings), '; n: ', linalg.norm(anchor_embedding - negative_embeddings))
+            print(linalg.norm(anchor_embedding, ord=2))
+            # print(np.shape(anchor_embedding))
+            break # next state
+
+def get_embeddings(embedding_dict, filter_func):
+    filtered_embs = []
+    for name, embs in embedding_dict.items():
+        for idx, emb in enumerate(embs):
+            if filter_func(name, idx):
+                filtered_embs.append(emb)
+    return filtered_embs
 
 def print_each_length(d):
     each_length = {key: len(value) for key, value in d.items()}
