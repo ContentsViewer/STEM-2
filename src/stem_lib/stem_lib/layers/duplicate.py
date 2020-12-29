@@ -6,4 +6,4 @@ class Layer(layers.Layer):
         super(Layer, self).__init__(**kwargs)
     
     def call(self, inputs):
-        return tf.concat([[inputs], [inputs]], 0)
+        return tf.concat([inputs, inputs], 1)

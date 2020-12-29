@@ -35,7 +35,8 @@ def triplet_loss(alpha=0.2):
         #           >>>
         #           https://gist.github.com/JustinhoCHN/a243056d87f4c2728de9e7ea4923de01
         #
-        anchor = y_pred[:, 0, :]
+        # anchor = y_pred[:, 0, :]
+        anchor = y_pred
         positive = y_true[:, 0, :]
         negative = y_true[:, 1, :]
 
@@ -77,8 +78,9 @@ def make_model(sensor_data_queue_size, sensor_data_segment_size):
     )
     base_model = lstm.Model()
     x = base_model(inputs)
-    x = tf.math.l2_normalize(x, 0, 1e-10)
-    outputs = duplicate.Layer()(x)
+    x = tf.math.l2_normalize(x, 1, 1e-10)  # x is [[x1, x2, ...]]
+    outputs = x
+    # outputs = duplicate.Layer()(x)
     model = tf.keras.Model(inputs, outputs)
     # opt = tf.keras.optimizers.Adam(learning_rate=0.01)
     # opt = tf.keras.optimizers.Adam(learning_rate=0.1)

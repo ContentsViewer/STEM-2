@@ -100,7 +100,7 @@ class StemStateSampler(Node):
                     each_length = {name: len(frames) for name, frames in self.sample_dict.items()}
                     self.get_logger().info(f'each_length: \n{each_length}')
                 else:
-                    self.sample_dict[state_name].append(self.sensor_data_queue)
+                    self.sample_dict[state_name].append(list(self.sensor_data_queue))
 
         self.publish_status()
 
