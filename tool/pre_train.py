@@ -128,10 +128,9 @@ def main(args):
     print('> evaluate')
     evaluate(model, test_sample_dict)
 
-    max_epochs = 3
-    for epoch_step in range(max_epochs):
+    for epoch_step in range(args.max_epochs):
         context['epoch_step'] = epoch_step + 1
-        print(f"> epoch {context['epoch_step']} / {max_epochs}")
+        print(f"> epoch {context['epoch_step']} / {args.max_epochs}")
 
         for batch_step, batch in enumerate(batches):
             context['batch_step'] = batch_step + 1
@@ -196,7 +195,7 @@ def evaluate(model, test_sample_dict):
         embedding_dict[name] = model(np.array(frames))
     
     for anchor_name, frames in test_sample_dict.items():
-        
+        print('> evaluate')
         # at each state, select one index
         anchor_idx = random.randrange(len(frames))
 
@@ -205,38 +204,39 @@ def evaluate(model, test_sample_dict):
         pos_embeddings, pos_emb_locs = get_embeddings(embedding_dict, lambda name, idx: name == anchor_name and idx != anchor_idx )
         neg_embeddings, neg_emb_locs = get_embeddings(embedding_dict, lambda name, idx: name != anchor_name)
 
-        # select one index randomly
-        pos_idx = random.randrange(len(pos_embeddings))
-        neg_idx = random.randrange(len(neg_embeddings))
-
-        print(f'positive\t: {pos_emb_locs[pos_idx]["name"]}, {pos_emb_locs[pos_idx]["index"]}')
-        print(f'negative\t: {neg_emb_locs[neg_idx]["name"]}, {neg_emb_locs[neg_idx]["index"]}')
-
-
         anchor_embedding = embedding_dict[anchor_name][anchor_idx]
 
         anchor_embedding = np.array(anchor_embedding)
         pos_embeddings = np.array(pos_embeddings)
         neg_embeddings = np.array(neg_embeddings)
 
-
+        print(f'distance\t: p={np.linalg.norm(anchor_embedding - pos_embeddings)}; n={np.linalg.norm(anchor_embedding - neg_embeddings)}')
         # print(anchor_embedding[0], anchor_embedding[1], anchor_embedding[2])
         # import ipdb; ipdb.set_trace()
         
+        print('> plot sample embedding')
+        # select one index randomly
+        pos_idx = random.randrange(len(pos_embeddings))
+        neg_idx = random.randrange(len(neg_embeddings))
+
+        print(f'positive\t: {pos_emb_locs[pos_idx]["name"]}, {pos_emb_locs[pos_idx]["index"]}')
+        print(f'negative\t: {neg_emb_locs[neg_idx]["name"]}, {neg_emb_locs[neg_idx]["index"]}')
+        pos_emb = pos_embeddings[pos_emb_locs[pos_idx]["index"]]
+        neg_emb = neg_embeddings[neg_emb_locs[neg_idx]["index"]]
         fig, subplots = plt.subplots(2, 2)
         subplots[0][0].set_title('all')
-        subplots[0][0].plot(neg_embeddings[0], label='negative', color='C2')
-        subplots[0][0].plot(pos_embeddings[0], label='positive', color='C1')
+        subplots[0][0].plot(neg_emb, label='negative', color='C2')
+        subplots[0][0].plot(pos_emb, label='positive', color='C1')
         subplots[0][0].plot(anchor_embedding, label='anchor', color='C0')
 
         subplots[0][1].set_title('anchor')
         subplots[0][1].plot(anchor_embedding, label='anchor', color='C0')
 
         subplots[1][0].set_title('positive')
-        subplots[1][0].plot(pos_embeddings[0], label='positive', color='C1')
+        subplots[1][0].plot(pos_emb, label='positive', color='C1')
 
         subplots[1][1].set_title('negative')
-        subplots[1][1].plot(neg_embeddings[0], label='negative', color='C2')
+        subplots[1][1].plot(neg_emb, label='negative', color='C2')
         
         # fig.legend()
         fig.tight_layout()
@@ -246,7 +246,6 @@ def evaluate(model, test_sample_dict):
             f'-positive({pos_emb_locs[pos_idx]["name"]},{pos_emb_locs[pos_idx]["index"]})'
             f'-negative({neg_emb_locs[neg_idx]["name"]},{neg_emb_locs[neg_idx]["index"]}).png')
 
-        print(f'distance\t: p={np.linalg.norm(anchor_embedding - pos_embeddings)}; n={np.linalg.norm(anchor_embedding - neg_embeddings)}')
         # print(np.linalg.norm(anchor_embedding, ord=2))
         # print(np.shape(anchor_embedding))
         # break # next state
@@ -285,6 +284,12 @@ def parse_arguments(argv):
         default=200
     )
 
+    parser.add_argument(
+        '--max-epochs',
+        help='Number of epochs to train the model.',
+        type=int,
+        default=10
+    )
     # parser.add_argument(
     #     '--batch-size',
     #     help='Number of samples will being used.',
