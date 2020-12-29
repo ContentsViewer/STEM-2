@@ -9,43 +9,76 @@ import time
 import itertools
 from matplotlib import pyplot as plt
 
+from stem_lib import stem_utils
 from stem_lib import learning_utils
+from stem_lib.stdlib import file_utils as std_file_utils
+
+class Logger(object):
+    def __init__(self, file_path):
+        self.terminal = sys.stdout
+        self.log = file_path.open('a')
+
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)  
+
+    def flush(self):
+        #this flush method is needed for python 3 compatibility.
+        #this handles the flush command by doing nothing.
+        #you might want to specify some extra behavior here.
+        pass    
+
+
+context = {
+    'output_dir': None,
+    'epoch_step': 0,
+    'batch_step': 0
+}
 
 def main(args):
 
+    context['output_dir'] = stem_utils.STEM_CONSTANTS.STEM_LOG_DIR / 'pre_train' / std_file_utils.get_unique_log_dir()
+    context['output_dir'].mkdir(parents=True)
+
+    sys.stdout = Logger(context['output_dir'] / 'stdout.log')
+
+    print(f'output_dir\t:{context["output_dir"]}')
+
+
     sample_dict_path = pathlib.Path(args.sample_dict)
 
-    with (sample_dict_path).open('rb') as file:
+    with sample_dict_path.open('rb') as file:
         sample_dict = pickle.load(file)
 
     
-
     # print(np.linalg.norm(np.array(sample_dict['inflating'][0][0]) - np.array(sample_dict['inflating'][100][0])))
 
+    print(f'samples\t:{dict_each_length(sample_dict)}')
 
-    print_each_length(sample_dict)
 
     head_state = next(iter(sample_dict))
     frame_size = len(sample_dict[head_state][0])
     segment_size = len(sample_dict[head_state][0][0])
-    print(f'frame_size: {frame_size}')
-    print(f'segment_size: {segment_size}')
+    print(f'frame_size\t:{frame_size}')
+    print(f'segment_size\t:{segment_size}')
 
 
+    print('> slice samples.')
     # slice valid range
     # and convert frame into np.array
-    sample_size = 200
+    print(f'n_sumples\t:{args.n_samples}')
     for name in sample_dict:
-        sample_dict[name] = np.array(sample_dict[name][0:sample_size])
-
-    print_each_length(sample_dict)
+        if len(sample_dict[name]) < args.n_samples:
+            raise ValueError(f'n_samples ({args.n_samples}) must be heigher than any each samples. '
+                             f'name: {name}; sample_length: {len(sample_dict[name])}')
+        
+        sample_dict[name] = np.array(sample_dict[name][0:args.n_samples])
 
     # suffle
     for name in sample_dict:
         random.shuffle(sample_dict[name])
 
-    print_each_length(sample_dict)
-
+    print(f'samples\t: {dict_each_length(sample_dict)}')
 
     n_states = len(sample_dict)
     shape = [math.ceil(n_states / 2), 2]
@@ -54,22 +87,28 @@ def main(args):
         subplot = subplots[plot_idx[0]][plot_idx[1]]
         subplot.set_title(name)
         subplot.plot(frames[0])
-        
-    plt.show()
+    
+    fig.tight_layout()
+    plt.savefig(context['output_dir'] / 'samples.png')
 
+    print('> divide train and test.')
     # divide train and test 
-    train_sample_dict = {name: frames[0:math.floor(sample_size/2)] for name, frames in sample_dict.items()}
-    test_sample_dict = {name: frames[math.floor(sample_size/2) : sample_size] for name, frames in sample_dict.items()}
+    train_sample_dict = {name: frames[0:math.floor(args.n_samples/2)] for name, frames in sample_dict.items()}
+    test_sample_dict = {name: frames[math.floor(args.n_samples/2) : args.n_samples] for name, frames in sample_dict.items()}
 
-    print('train_sample_dict: ')
-    print_each_length(train_sample_dict)
+    with (context['output_dir'] / 'train_sample_dict.pkl').open('wb') as file:
+        pickle.dump(train_sample_dict, file)
 
-    print('test_sample_dict: ')
-    print_each_length(test_sample_dict)
+    with (context['output_dir'] / 'test_sample_dict.pkl').open('wb') as file:
+        pickle.dump(test_sample_dict, file)
+
+    print(f'train_sample_dict\t: {dict_each_length(train_sample_dict)}')
+    print(f'test_sample_dict\t: {dict_each_length(test_sample_dict)}')
+    
 
     # devide train data into each batch
     batches = []
-    batch_size = 20
+    batch_size = 32
 
     for idx in range(0, min([ len(frames) for frames in train_sample_dict.values()]) , batch_size):
         batch = {}
@@ -78,54 +117,34 @@ def main(args):
             
         batches.append(batch)
 
-
-    # # setup train data
-    # train_data = []
-    # for name, frames in train_sample_dict.items():
-    #     train_data.extend([{'name': name, 'frame': frame} for frame in frames])
-
-    # random.shuffle(train_data)
-
-    # print(len(train_data))
-    # print(train_data[0])
-
+    print(f'n_batches\t: {len(batches)}')
     
-    for batch in batches:
-        for name, frames in batch.items():
-            print(name, len(frames))
+    for idx, batch in enumerate(batches):
+        print(f'batch_{idx}\t: {dict_each_length(batch)}')
 
     # train
     model = learning_utils.make_model(frame_size, segment_size)
 
-    # frame1 = np.random.rand(1, frame_size, segment_size)
-    # frame2 = np.random.rand(1, frame_size, segment_size)
-    # frame3 = np.random.rand(1, frame_size, segment_size)
-
-    # fig = plt.figure()
-    # ax1 = fig.add_subplot(221, title='ax1')
-    # ax2 = fig.add_subplot(222, title='ax2')
-    # ax3 = fig.add_subplot(223, title='ax3')
-
-    # print(np.shape(model(frame1)))
-    # ax1.plot(model(frame1)[0])
-    # ax2.plot(model(frame2)[0])
-    # ax3.plot(model(frame3)[0])
-
-    # plt.legend()
-    # plt.tight_layout()
-    # plt.show()
-
-    print('evaluate')
+    print('> evaluate')
     evaluate(model, test_sample_dict)
 
-    for batch in batches:
+    max_epochs = 3
+    for epoch_step in range(max_epochs):
+        context['epoch_step'] = epoch_step + 1
+        print(f"> epoch {context['epoch_step']} / {max_epochs}")
 
-        print('train')
-        for step in range(3):
+        for batch_step, batch in enumerate(batches):
+            context['batch_step'] = batch_step + 1
+            print(f"> batch {context['batch_step']} / {len(batches)}")
+
+            print('> train')
             train_per_batch(batch, model)
 
-        print('evaluate')
+        print('> evaluate')
         evaluate(model, test_sample_dict)
+
+        model.save(context['output_dir'] / f'model-{get_current_step_id(context)}')
+
 
     # test
 
@@ -139,6 +158,7 @@ def main(args):
     # with (sample_dict_path).open('wb') as file:
     #     pickle.dump(sample_dict, file)
     # print(sample_dict)
+    print('> end program')
 
 def train_per_batch(batch, model):
     embedding_dict = {}
@@ -165,8 +185,8 @@ def train_per_batch(batch, model):
 
     input_frames = np.array(input_frames)
     target_embeddings = np.array(target_embeddings)
-    print(len(input_frames), len(target_embeddings))
-
+    print(f'input, target\t: {len(input_frames)}, {len(target_embeddings)}')
+    
     model.fit(input_frames, target_embeddings, batch_size=32)
 
 def evaluate(model, test_sample_dict):
@@ -176,57 +196,61 @@ def evaluate(model, test_sample_dict):
         embedding_dict[name] = model(np.array(frames))
     
     for anchor_name, frames in test_sample_dict.items():
-        for anchor_idx, anchor_frame in enumerate(frames):
-            print(anchor_name)
-            anchor_embedding = embedding_dict[name][anchor_idx]
-            positive_embeddings, pos_emb_locs = get_embeddings(embedding_dict, lambda name, idx: name == anchor_name and idx != anchor_idx )
-            negative_embeddings, neg_emb_locs = get_embeddings(embedding_dict, lambda name, idx: name != anchor_name)
+        
+        # at each state, select one index
+        anchor_idx = random.randrange(len(frames))
 
-            anchor_embedding = np.array(anchor_embedding)
-            positive_embeddings = np.array(positive_embeddings)
-            negative_embeddings = np.array(negative_embeddings)
+        print(f'anchor\t: {anchor_name}, {anchor_idx}')
 
-            print(anchor_name, anchor_idx)
-            print(pos_emb_locs[0]['name'], pos_emb_locs[0]['index'])
-            print(neg_emb_locs[0]['name'], neg_emb_locs[0]['index'])
+        pos_embeddings, pos_emb_locs = get_embeddings(embedding_dict, lambda name, idx: name == anchor_name and idx != anchor_idx )
+        neg_embeddings, neg_emb_locs = get_embeddings(embedding_dict, lambda name, idx: name != anchor_name)
 
-            # print(anchor_embedding[0], anchor_embedding[1], anchor_embedding[2])
+        # select one index randomly
+        pos_idx = random.randrange(len(pos_embeddings))
+        neg_idx = random.randrange(len(neg_embeddings))
 
-            # import ipdb; ipdb.set_trace()
-            
-            fig, subplots = plt.subplots(2, 2)
-            subplots[0][0].set_title('all')
-            subplots[0][0].plot(negative_embeddings[0], label='negative')
-            subplots[0][0].plot(positive_embeddings[0], label='positive')
-            subplots[0][0].plot(anchor_embedding, label='anchor')
+        print(f'positive\t: {pos_emb_locs[pos_idx]["name"]}, {pos_emb_locs[pos_idx]["index"]}')
+        print(f'negative\t: {neg_emb_locs[neg_idx]["name"]}, {neg_emb_locs[neg_idx]["index"]}')
 
-            subplots[0][1].set_title(f'anchor ({anchor_name})')
-            subplots[0][1].plot(anchor_embedding, label='anchor')
 
-            subplots[1][0].set_title('positive')
-            subplots[1][0].plot(positive_embeddings[0], label='positive')
+        anchor_embedding = embedding_dict[anchor_name][anchor_idx]
 
-            subplots[1][1].set_title('negative')
-            subplots[1][1].plot(negative_embeddings[0], label='negative')
-            
-            
-            # ax1.plot(anchor_frame)
-            # ax1.plot(test_sample_dict[pos_emb_locs[0]['name']][pos_emb_locs[0]['index']])
-            # ax1.plot(test_sample_dict[neg_emb_locs[0]['name']][neg_emb_locs[0]['index']])
+        anchor_embedding = np.array(anchor_embedding)
+        pos_embeddings = np.array(pos_embeddings)
+        neg_embeddings = np.array(neg_embeddings)
 
-            # ax2.plot(anchor_embedding)
-            # ax3.plot(positive_embeddings[0])
-            # ax4.plot(negative_embeddings[0])
 
-            fig.legend()
-            # plt.tight_layout()
+        # print(anchor_embedding[0], anchor_embedding[1], anchor_embedding[2])
+        # import ipdb; ipdb.set_trace()
+        
+        fig, subplots = plt.subplots(2, 2)
+        subplots[0][0].set_title('all')
+        subplots[0][0].plot(neg_embeddings[0], label='negative', color='C2')
+        subplots[0][0].plot(pos_embeddings[0], label='positive', color='C1')
+        subplots[0][0].plot(anchor_embedding, label='anchor', color='C0')
 
-            print('p: ', np.linalg.norm(anchor_embedding - positive_embeddings), '; n: ', np.linalg.norm(anchor_embedding - negative_embeddings))
-            print(np.linalg.norm(anchor_embedding, ord=2))
-            # print(np.shape(anchor_embedding))
-            break # next state
+        subplots[0][1].set_title('anchor')
+        subplots[0][1].plot(anchor_embedding, label='anchor', color='C0')
+
+        subplots[1][0].set_title('positive')
+        subplots[1][0].plot(pos_embeddings[0], label='positive', color='C1')
+
+        subplots[1][1].set_title('negative')
+        subplots[1][1].plot(neg_embeddings[0], label='negative', color='C2')
+        
+        # fig.legend()
+        fig.tight_layout()
+
+        plt.savefig(context['output_dir'] / f'evaluate-{get_current_step_id(context)}'
+            f'-anchor({anchor_name},{anchor_idx})'
+            f'-positive({pos_emb_locs[pos_idx]["name"]},{pos_emb_locs[pos_idx]["index"]})'
+            f'-negative({neg_emb_locs[neg_idx]["name"]},{neg_emb_locs[neg_idx]["index"]}).png')
+
+        print(f'distance\t: p={np.linalg.norm(anchor_embedding - pos_embeddings)}; n={np.linalg.norm(anchor_embedding - neg_embeddings)}')
+        # print(np.linalg.norm(anchor_embedding, ord=2))
+        # print(np.shape(anchor_embedding))
+        # break # next state
     
-    plt.show()
 
 def get_embeddings(embedding_dict, filter_func):
     filtered_embs = []
@@ -239,25 +263,34 @@ def get_embeddings(embedding_dict, filter_func):
     return filtered_embs, locations
 
 
-def print_each_length(d):
-    each_length = {key: len(value) for key, value in d.items()}
-    print(f'each_length: \n{each_length}')
+def dict_each_length(d):
+    return {key: len(value) for key, value in d.items()}
 
-
+def get_current_step_id(context):
+    return f'epoch-({context["epoch_step"]})-batch-({context["batch_step"]})'
 
 def parse_arguments(argv):
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
         '--sample-dict',
-        help="Path to the sample_dict.pkl file.",
-        default='.stem/samples/sample_dict.pkl'
+        help='Path to the sample_dict.pkl file.',
+        default='sample_dict.pkl'
     )
 
     parser.add_argument(
-        '--valid-range-size',
-        default=-1
+        '--n-samples',
+        help='Number of samples will being used.',
+        type=int,
+        default=200
     )
+
+    # parser.add_argument(
+    #     '--batch-size',
+    #     help='Number of samples will being used.',
+    #     type=int,
+    #     default=32
+    # )
 
     return parser.parse_args(argv)
 
