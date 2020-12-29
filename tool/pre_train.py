@@ -6,6 +6,7 @@ import random
 import math
 import numpy as np
 import time
+import itertools
 from matplotlib import pyplot as plt
 
 from stem_lib import learning_utils
@@ -32,9 +33,10 @@ def main(args):
 
 
     # slice valid range
+    # and convert frame into np.array
     sample_size = 200
     for name in sample_dict:
-        sample_dict[name] = sample_dict[name][0:sample_size]
+        sample_dict[name] = np.array(sample_dict[name][0:sample_size])
 
     print_each_length(sample_dict)
 
@@ -45,18 +47,14 @@ def main(args):
     print_each_length(sample_dict)
 
 
-    fig = plt.figure()
-    ax1 = fig.add_subplot(111, title='ax1')
-    ax1.plot(sample_dict['inflating'][0])
-    # ax1.plot(sample_dict['inflating'][100])
-    # ax1.plot(sample_dict['shrinking'][0])
-    plt.show()
-
-    fig = plt.figure()
-    ax1 = fig.add_subplot(111, title='ax1')
-    ax1.plot(sample_dict['inflating'][300])
-    # ax1.plot(sample_dict['inflating'][100])
-    # ax1.plot(sample_dict['shrinking'][0])
+    n_states = len(sample_dict)
+    shape = [math.ceil(n_states / 2), 2]
+    fig, subplots = plt.subplots(*shape)
+    for plot_idx, name, frames in zip(itertools.product(*[range(s) for s in shape]), sample_dict.keys(), sample_dict.values()):
+        subplot = subplots[plot_idx[0]][plot_idx[1]]
+        subplot.set_title(name)
+        subplot.plot(frames[0])
+        
     plt.show()
 
     # divide train and test 
@@ -99,26 +97,26 @@ def main(args):
     # train
     model = learning_utils.make_model(frame_size, segment_size)
 
-    frame1 = np.random.rand(1, frame_size, segment_size)
-    frame2 = np.random.rand(1, frame_size, segment_size)
-    frame3 = np.random.rand(1, frame_size, segment_size)
+    # frame1 = np.random.rand(1, frame_size, segment_size)
+    # frame2 = np.random.rand(1, frame_size, segment_size)
+    # frame3 = np.random.rand(1, frame_size, segment_size)
 
-    fig = plt.figure()
-    ax1 = fig.add_subplot(221, title='ax1')
-    ax2 = fig.add_subplot(222, title='ax2')
-    ax3 = fig.add_subplot(223, title='ax3')
+    # fig = plt.figure()
+    # ax1 = fig.add_subplot(221, title='ax1')
+    # ax2 = fig.add_subplot(222, title='ax2')
+    # ax3 = fig.add_subplot(223, title='ax3')
 
-    print(np.shape(model(frame1)))
-    ax1.plot(model(frame1)[0])
-    ax2.plot(model(frame2)[0])
-    ax3.plot(model(frame3)[0])
+    # print(np.shape(model(frame1)))
+    # ax1.plot(model(frame1)[0])
+    # ax2.plot(model(frame2)[0])
+    # ax3.plot(model(frame3)[0])
 
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
+    # plt.legend()
+    # plt.tight_layout()
+    # plt.show()
 
     print('evaluate')
-    evaluate(model, sample_dict)
+    evaluate(model, test_sample_dict)
 
     for batch in batches:
 
@@ -127,7 +125,7 @@ def main(args):
             train_per_batch(batch, model)
 
         print('evaluate')
-        evaluate(model, sample_dict)
+        evaluate(model, test_sample_dict)
 
     # test
 
@@ -196,27 +194,39 @@ def evaluate(model, test_sample_dict):
 
             # import ipdb; ipdb.set_trace()
             
-            fig = plt.figure()
-            ax1 = fig.add_subplot(421, title='ax1')
-            # ax2 = fig.add_subplot(422, title='ax2')
-            # ax3 = fig.add_subplot(423, title='ax3')
-            # ax4 = fig.add_subplot(424, title='ax4')
+            fig, subplots = plt.subplots(2, 2)
+            subplots[0][0].set_title('all')
+            subplots[0][0].plot(negative_embeddings[0], label='negative')
+            subplots[0][0].plot(positive_embeddings[0], label='positive')
+            subplots[0][0].plot(anchor_embedding, label='anchor')
+
+            subplots[0][1].set_title(f'anchor ({anchor_name})')
+            subplots[0][1].plot(anchor_embedding, label='anchor')
+
+            subplots[1][0].set_title('positive')
+            subplots[1][0].plot(positive_embeddings[0], label='positive')
+
+            subplots[1][1].set_title('negative')
+            subplots[1][1].plot(negative_embeddings[0], label='negative')
             
-            ax1.plot(anchor_frame)
-            ax1.plot(test_sample_dict[pos_emb_locs[0]['name']][pos_emb_locs[0]['index']])
-            ax1.plot(test_sample_dict[neg_emb_locs[0]['name']][neg_emb_locs[0]['index']])
+            
+            # ax1.plot(anchor_frame)
+            # ax1.plot(test_sample_dict[pos_emb_locs[0]['name']][pos_emb_locs[0]['index']])
+            # ax1.plot(test_sample_dict[neg_emb_locs[0]['name']][neg_emb_locs[0]['index']])
 
             # ax2.plot(anchor_embedding)
             # ax3.plot(positive_embeddings[0])
             # ax4.plot(negative_embeddings[0])
 
-            # plt.legend()
-            plt.tight_layout()
-            plt.show()
+            fig.legend()
+            # plt.tight_layout()
+
             print('p: ', np.linalg.norm(anchor_embedding - positive_embeddings), '; n: ', np.linalg.norm(anchor_embedding - negative_embeddings))
             print(np.linalg.norm(anchor_embedding, ord=2))
             # print(np.shape(anchor_embedding))
             break # next state
+    
+    plt.show()
 
 def get_embeddings(embedding_dict, filter_func):
     filtered_embs = []
