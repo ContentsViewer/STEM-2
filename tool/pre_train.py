@@ -56,8 +56,8 @@ def main(args):
     print(f'n_sumples\t:{args.n_samples}')
     for name in sample_dict:
         if len(sample_dict[name]) < args.n_samples:
-            raise ValueError(f'n_samples ({args.n_samples}) must be heigher than any each samples. '
-                             f'name: {name}; sample_length: {len(sample_dict[name])}')
+            raise ValueError(f'n_samples ({args.n_samples}) must be less than any each frame length. '
+                             f'name: {name}; frame_length: {len(sample_dict[name])}')
         
         sample_dict[name] = np.array(sample_dict[name][0:args.n_samples])
 
