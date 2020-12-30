@@ -12,21 +12,7 @@ from matplotlib import pyplot as plt
 from stem_lib import stem_utils
 from stem_lib import learning_utils
 from stem_lib.stdlib import file_utils as std_file_utils
-
-class Logger(object):
-    def __init__(self, file_path):
-        self.terminal = sys.stdout
-        self.log = file_path.open('a')
-
-    def write(self, message):
-        self.terminal.write(message)
-        self.log.write(message)  
-
-    def flush(self):
-        #this flush method is needed for python 3 compatibility.
-        #this handles the flush command by doing nothing.
-        #you might want to specify some extra behavior here.
-        pass    
+from stem_lib.stdlib.logging import TeeLogger
 
 
 context = {
@@ -40,12 +26,13 @@ def main(args):
     context['output_dir'] = stem_utils.STEM_CONSTANTS.STEM_LOG_DIR / 'pre_train' / std_file_utils.get_unique_log_dir()
     context['output_dir'].mkdir(parents=True)
 
-    sys.stdout = Logger(context['output_dir'] / 'stdout.log')
+    sys.stdout = TeeLogger(context['output_dir'] / 'stdout.log')
 
-    print(f'output_dir\t:{context["output_dir"]}')
+    print(f'output_dir\t: {context["output_dir"]}')
 
 
     sample_dict_path = pathlib.Path(args.sample_dict)
+    print(f"sample_dict_path\t: {sample_dict_path}")
 
     with sample_dict_path.open('rb') as file:
         sample_dict = pickle.load(file)
@@ -281,7 +268,7 @@ def parse_arguments(argv):
         '--n-samples',
         help='Number of samples will being used.',
         type=int,
-        default=200
+        default=320
     )
 
     parser.add_argument(

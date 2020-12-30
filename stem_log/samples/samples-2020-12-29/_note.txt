@@ -1,0 +1,7 @@
+# samples-2020-12-29
+    samples     : {'inflating': 1042, 'shrinking': 1022, 'baunded': 1362, 'non': 1036}
+    
+    frame_size  : 100
+    
+    segment_size: 2
+

@@ -1,0 +1,8 @@
+output_dir	: stem_log/split_sample_dict/2020-12-30-21-53-44(190657)
+sample_dict_path	: stem_log/samples/samples-2020-12-29/sample_dict.pkl
+samples	: {'inflating': 1042, 'shrinking': 1022, 'baunded': 1362, 'non': 1036}
+names	: ['baunded']
+> split samples into {'baunded'} and {'inflating', 'shrinking', 'non'}
+part_a	: {'baunded': 1362}
+part_b	: {'inflating': 1042, 'shrinking': 1022, 'non': 1036}
+> dump
