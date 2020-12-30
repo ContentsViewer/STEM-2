@@ -8,7 +8,7 @@ from stem_interfaces.msg import BalloonSensorData
 from stem_interfaces.msg import GeneralSensorData
 
 from stem_lib import sensor_utils
-from stem_lib import utils as stem_utils
+from stem_lib import ros_utils
 
 # import time
 
@@ -17,9 +17,9 @@ class BalloonSensorDriver(Node):
     def __init__(self):
         super().__init__('balloon_sensor_driver')
 
-        port = stem_utils.load_parameter(self, 'port', '/dev/ttyACM0')
-        baudrate = stem_utils.load_parameter(self, 'baudrate', 19200)
-        read_period_sec = stem_utils.load_parameter(self, 'read_period_sec', 0.02)
+        port = ros_utils.load_parameter(self, 'port', '/dev/ttyACM0')
+        baudrate = ros_utils.load_parameter(self, 'baudrate', 19200)
+        read_period_sec = ros_utils.load_parameter(self, 'read_period_sec', 0.02)
 
         # self.publisher_ = self.create_publisher(BalloonSensorData, 'balloon_sensor_data', QoSPresetProfiles.SENSOR_DATA.value)
         self.balloon_sensor_data_publisher = self.create_publisher(BalloonSensorData, 'balloon_sensor_data', 10)

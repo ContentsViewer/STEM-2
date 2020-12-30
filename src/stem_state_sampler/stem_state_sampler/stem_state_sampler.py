@@ -1,5 +1,3 @@
-
-
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile
@@ -15,10 +13,11 @@ from stem_interfaces.srv import SaveSamples
 
 
 from stem_lib.stdlib.stopwatch import Stopwatch
-from stem_lib import utils as stem_utils
+from stem_lib import stem_utils
+from stem_lib import ros_utils
 from stem_lib import learning_utils
 
-
+from stem_lib.stdlib import file_utils as std_file_utils
 
 class StemStateSampler(Node):
     def __init__(self):
@@ -26,13 +25,15 @@ class StemStateSampler(Node):
 
         self.get_logger().info('Awaken.')
 
-        self.working_dir = stem_utils.load_parameter(self, 'working_dir', '.stem/samples')
-        self.sensor_data_queue_size = stem_utils.load_parameter(self, 'sensor_data_queue_size', 100)
-        self.state_names = stem_utils.load_parameter(self, 'state_names', ['touched', 'not_touched'])
-        self.sensor_data_segment_size = stem_utils.load_parameter(self, 'sensor_data_segment_size', 2)
-        self.sensor_sampling_rate_min = stem_utils.load_parameter(self, 'sensor_sampling_rate_min', 35)
+        # self.working_dir = stem_utils.load_parameter(self, 'working_dir', '.stem/samples')
+        self.sensor_data_queue_size = ros_utils.load_parameter(self, 'sensor_data_queue_size', 100)
+        self.state_names = ros_utils.load_parameter(self, 'state_names', ['touched', 'not_touched'])
+        self.sensor_data_segment_size = ros_utils.load_parameter(self, 'sensor_data_segment_size', 2)
+        self.sensor_sampling_rate_min = ros_utils.load_parameter(self, 'sensor_sampling_rate_min', 35)
 
-        self.working_dir = pathlib.Path(self.working_dir)
+        # self.working_dir = pathlib.Path(self.working_dir)
+        self.working_dir = stem_utils.STEM_CONSTANTS.STEM_LOG_DIR / 'stem_state_sampler' / std_file_utils.get_unique_log_dir()
+
         self.get_logger().info(f'Using "{self.working_dir}" as working directory.')
 
         self.sensor_receiver = self.create_subscription(
@@ -112,7 +113,7 @@ class StemStateSampler(Node):
         self.supervise_state_listener.update(supervise_signal.supervise_state_name)
     
     def publish_status(self):
-        self.status_publisher.publish(stem_utils.fill_message_from_dict(STEMStatus(), self.status))
+        self.status_publisher.publish(ros_utils.fill_message_from_dict(STEMStatus(), self.status))
 
 
     def on_request_save_samples(self, request, response):

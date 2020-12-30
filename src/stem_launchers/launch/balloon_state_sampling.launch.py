@@ -28,7 +28,7 @@ def generate_launch_description():
                 'sensor_sampling_rate_min': 35,
                 'sensor_data_queue_size': 100,
                 'sensor_data_segment_size': 2,
-                'working_dir': '.stem/samples',
+                # 'working_dir': '.stem/samples',
             }],
             # emulate_tty=True,
             output='screen'

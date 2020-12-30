@@ -15,7 +15,7 @@ from .controller_widget import SuperviseButton
 from .controller_widget import SignalLampController
 
 from stem_lib.stdlib.concurrent.thread import run_once_async
-from stem_lib import utils as stem_utils
+from stem_lib import ros_utils
 
 from stem_interfaces.msg import SuperviseSignal
 from stem_interfaces.msg import Estimation
@@ -92,7 +92,7 @@ class STEMController(Plugin):
                 state_names, sensor_sampling_rate_min = response.values
 
                 try:
-                    self.stem_params['state_names'] = stem_utils.get_parameter_value(
+                    self.stem_params['state_names'] = ros_utils.get_parameter_value(
                         state_names, 
                         [ParameterType.PARAMETER_STRING_ARRAY]
                     )
@@ -107,7 +107,7 @@ class STEMController(Plugin):
                     self._node.get_logger().warn(f'Failed to get parameter "stem/state_names": {e}')
                 
                 try:
-                    self.stem_params['sensor_sampling_rate_min'] = stem_utils.get_parameter_value(
+                    self.stem_params['sensor_sampling_rate_min'] = ros_utils.get_parameter_value(
                         sensor_sampling_rate_min, 
                         [ParameterType.PARAMETER_INTEGER, ParameterType.PARAMETER_DOUBLE]
                     )
@@ -119,7 +119,7 @@ class STEMController(Plugin):
                 self._node.get_logger().warn(f'Failed to get stem parameters. Please reload the plugin: {e}')
 
         try:
-            future = stem_utils.request_get_parameters_async(
+            future = ros_utils.request_get_parameters_async(
                 self._stem_get_parameters_client,
                 parameter_names=['state_names', 'sensor_sampling_rate_min']
             )
@@ -185,7 +185,7 @@ class STEMController(Plugin):
     
     def request_save_model(self):
         try:
-            future = stem_utils.request_service_async(self._save_model_client, SaveModel.Request())
+            future = ros_utils.request_service_async(self._save_model_client, SaveModel.Request())
         except Exception as e:
             self._node.get_logger().error(f'Failed to request save_model service: {e}')
             return
