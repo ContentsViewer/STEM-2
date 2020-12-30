@@ -197,7 +197,13 @@ def evaluate(model, test_sample_dict):
         pos_embeddings = np.array(pos_embeddings)
         neg_embeddings = np.array(neg_embeddings)
 
-        print(f'distance\t: p={np.linalg.norm(anchor_embedding - pos_embeddings)}; n={np.linalg.norm(anchor_embedding - neg_embeddings)}')
+        anchor_pos_distances = np.linalg.norm(anchor_embedding - pos_embeddings, axis=1)
+        anchor_neg_distances = np.linalg.norm(anchor_embedding - neg_embeddings, axis=1)
+
+        print(f"distance: \n"
+              f"    p: mean={np.mean(anchor_pos_distances)}, std={np.std(anchor_pos_distances)}\n"
+              f"    n: mean={np.mean(anchor_neg_distances)}, std={np.std(anchor_neg_distances)}")
+
         # print(anchor_embedding[0], anchor_embedding[1], anchor_embedding[2])
         # import ipdb; ipdb.set_trace()
         
@@ -208,8 +214,9 @@ def evaluate(model, test_sample_dict):
 
         print(f'positive\t: {pos_emb_locs[pos_idx]["name"]}, {pos_emb_locs[pos_idx]["index"]}')
         print(f'negative\t: {neg_emb_locs[neg_idx]["name"]}, {neg_emb_locs[neg_idx]["index"]}')
-        pos_emb = pos_embeddings[pos_emb_locs[pos_idx]["index"]]
-        neg_emb = neg_embeddings[neg_emb_locs[neg_idx]["index"]]
+        pos_emb = pos_embeddings[pos_idx]
+        neg_emb = neg_embeddings[neg_idx]
+        
         fig, subplots = plt.subplots(2, 2)
         subplots[0][0].set_title('all')
         subplots[0][0].plot(neg_emb, label='negative', color='C2')
@@ -253,7 +260,7 @@ def dict_each_length(d):
     return {key: len(value) for key, value in d.items()}
 
 def get_current_step_id(context):
-    return f'epoch-({context["epoch_step"]})-batch-({context["batch_step"]})'
+    return f'epoch-{context["epoch_step"]}-batch-{context["batch_step"]}'
 
 def parse_arguments(argv):
     parser = argparse.ArgumentParser()

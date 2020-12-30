@@ -5,3 +5,5 @@
     
     segment_size: 2
 
+    # notice
+        It may contains some dupulicated data. 

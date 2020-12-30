@@ -1,2 +1,17 @@
-# 
+# 2020-12-30-22-23-11(191646)
     For evaluation test of unknown state estimation
+
+    # issues
+        # distance caliculation
+            ```
+                print(f'distance\t: p={np.linalg.norm(anchor_embedding - pos_embeddings)}; n={np.linalg.norm(anchor_embedding - neg_embeddings)}')
+            ```
+            This caliculation join all distances into one vector and caliculate 2-norm.
+        # evaluation embedding
+            ```
+                pos_emb = pos_embeddings[pos_emb_locs[pos_idx]["index"]]
+                neg_emb = neg_embeddings[neg_emb_locs[neg_idx]["index"]]
+            ```
+            It's not correct.
+    
+        These issues fixed and re-trained at "2020-12-31-02-48-29(218685)".
