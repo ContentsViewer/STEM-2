@@ -29,6 +29,7 @@ def main(args):
     sys.stdout = TeeLogger(context['output_dir'] / 'stdout.log')
 
     print(f'output_dir\t: {context["output_dir"]}')
+    print(f'sys.argv\t: {sys.argv}')
 
 
     sample_dict_path = pathlib.Path(args.sample_dict)
@@ -69,14 +70,15 @@ def main(args):
 
     n_states = len(sample_dict)
     shape = [math.ceil(n_states / 2), 2]
-    fig, subplots = plt.subplots(*shape)
-    for plot_idx, name, frames in zip(itertools.product(*[range(s) for s in shape]), sample_dict.keys(), sample_dict.values()):
-        subplot = subplots[plot_idx[0]][plot_idx[1]]
+    fig = plt.figure()
+    for plot_idx, (name, frames) in enumerate(sample_dict.items()):
+        subplot = fig.add_subplot(*shape, plot_idx+1)
         subplot.set_title(name)
         subplot.plot(frames[0])
     
     fig.tight_layout()
     plt.savefig(context['output_dir'] / 'samples.png')
+    plt.close()
 
     print('> divide train and test.')
     # divide train and test 
@@ -131,20 +133,8 @@ def main(args):
 
         model.save(context['output_dir'] / f'model-{get_current_step_id(context)}')
 
-
-    # test
-
-    # print(sample_dict['non'])
-    # sample_dict['non'] = sample_dict['non'][0:25]
-
-    # each_length = {name: len(frames) for name, frames in sample_dict.items()}
-    # print(f'each_length: \n{each_length}')
-    # print(sample_dict['non'])
-
-    # with (sample_dict_path).open('wb') as file:
-    #     pickle.dump(sample_dict, file)
-    # print(sample_dict)
     print('> end program')
+
 
 def train_per_batch(batch, model):
     embedding_dict = {}
@@ -239,7 +229,7 @@ def evaluate(model, test_sample_dict):
             f'-anchor({anchor_name},{anchor_idx})'
             f'-positive({pos_emb_locs[pos_idx]["name"]},{pos_emb_locs[pos_idx]["index"]})'
             f'-negative({neg_emb_locs[neg_idx]["name"]},{neg_emb_locs[neg_idx]["index"]}).png')
-
+        plt.close()
         # print(np.linalg.norm(anchor_embedding, ord=2))
         # print(np.shape(anchor_embedding))
         # break # next state

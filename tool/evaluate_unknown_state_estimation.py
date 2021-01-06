@@ -22,6 +22,7 @@ def main(args):
 
     sys.stdout = TeeLogger(output_dir / 'stdout.log')
     print(f'output_dir\t: {output_dir}')
+    print(f'sys.argv\t: {sys.argv}')
 
     print('> load model')
     print(f"model_path\t: {args.pretrained_model}")
@@ -61,20 +62,19 @@ def main(args):
 
 
     n_states = len(known_sample_dict) + len(unknown_sample_dict)
-    shape = [math.ceil(n_states / 2), 2]
+    plot_shape = [math.ceil(n_states / 2), 2]
 
     for frame_idx in range(args.n_samples):
-        fig, subplots = plt.subplots(*shape)
-        plot_idx_iter = itertools.product(*[range(s) for s in shape])
+        fig = plt.figure()
 
-        for name, frames in itertools.chain(known_sample_dict.items(), unknown_sample_dict.items()):
-            plot_idx = next(plot_idx_iter)
-            subplot = subplots[plot_idx[0]][plot_idx[1]]
+        for plot_idx, (name, frames) in enumerate(itertools.chain(known_sample_dict.items(), unknown_sample_dict.items())):
+            subplot = fig.add_subplot(*plot_shape, plot_idx+1)
             subplot.set_title(name)
             subplot.plot(frames[frame_idx])
         
         fig.tight_layout()
         plt.savefig(output_dir / f"samples-{frame_idx}.png")
+        plt.close()
 
     known_emb_dict = {}
     for name, frames in known_sample_dict.items():
@@ -93,18 +93,19 @@ def main(args):
             
             anchor_emb = unknown_emb_dict[anchor_name][frame_idx]
 
-            fig, subplots = plt.subplots(*shape)
-            plot_idx_iter = itertools.product(*[range(s) for s in shape])
+            fig = plt.figure()
+            plot_idx_iter = iter(range(n_states))
             
-            compare_embeddings(anchor_emb, unknown_emb_dict, subplots, plot_idx_iter)
-            compare_embeddings(anchor_emb, known_emb_dict, subplots, plot_idx_iter)
+            compare_embeddings(anchor_emb, unknown_emb_dict, fig, plot_shape, plot_idx_iter)
+            compare_embeddings(anchor_emb, known_emb_dict, fig, plot_shape, plot_idx_iter)
 
             fig.tight_layout()
             plt.savefig(output_dir / f"distances-{anchor_name}-{frame_idx}.png")
+            plt.close()
 
-
+    print('> end program')
             
-def compare_embeddings(anchor_emb, comp_emb_dict, subplots, plot_idx_iter):
+def compare_embeddings(anchor_emb, comp_emb_dict, fig, plot_shape, plot_idx_iter):
 
     for comp_name, comp_embs in comp_emb_dict.items():
         print(f"comp_name\t: {comp_name}")
@@ -116,7 +117,8 @@ def compare_embeddings(anchor_emb, comp_emb_dict, subplots, plot_idx_iter):
         print(f"mean_distance\t: {mean_distance}")
 
         plot_idx = next(plot_idx_iter)
-        subplot = subplots[plot_idx[0]][plot_idx[1]]
+        subplot = fig.add_subplot(*plot_shape, plot_idx+1)
+        # subplot = subplots[plot_idx[0]][plot_idx[1]]
         subplot.set_title(comp_name)
         subplot.set_ylim([0, 0.1])
         subplot.axhline(mean_distance, linestyle='--', color='C1')
@@ -163,14 +165,6 @@ def parse_arguments(argv):
         type=int,
         default=16
     )
-
-
-    # parser.add_argument(
-    #     '--batch-size',
-    #     help='Number of samples will being used.',
-    #     type=int,
-    #     default=32
-    # )
 
     return parser.parse_args(argv)
 

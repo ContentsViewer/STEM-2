@@ -15,6 +15,7 @@ def main(args):
     sys.stdout = TeeLogger(output_dir / 'stdout.log')
 
     print(f'output_dir\t: {output_dir}')
+    print(f'sys.argv\t: {sys.argv}')
 
     sample_dict_path = pathlib.Path(args.sample_dict)
     print(f"sample_dict_path\t: {sample_dict_path}")
@@ -47,7 +48,8 @@ def main(args):
 
     with (output_dir / get_sample_dict_filename(part_b)).open('wb') as file:
         pickle.dump(part_b, file)
-
+        
+    print('> end program')
 
 # def get_set_parts_
 def dict_each_length(d):
