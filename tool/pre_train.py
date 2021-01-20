@@ -55,6 +55,11 @@ def main(args):
     # slice valid range
     # and convert frame into np.array
     print(f'n_sumples\t:{args.n_samples}')
+
+    # suffle
+    for name in sample_dict:
+        random.shuffle(sample_dict[name])
+
     for name in sample_dict:
         if len(sample_dict[name]) < args.n_samples:
             raise ValueError(f'n_samples ({args.n_samples}) must be less than any each frame length. '
@@ -62,9 +67,6 @@ def main(args):
         
         sample_dict[name] = np.array(sample_dict[name][0:args.n_samples])
 
-    # suffle
-    for name in sample_dict:
-        random.shuffle(sample_dict[name])
 
     print(f'samples\t: {dict_each_length(sample_dict)}')
 

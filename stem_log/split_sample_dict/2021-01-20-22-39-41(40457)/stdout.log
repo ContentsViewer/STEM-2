@@ -1,0 +1,10 @@
+output_dir	: stem_log/split_sample_dict/2021-01-20-22-39-41(40457)
+sys.argv	: ['tool/split_sample_dict.py', '--sample-dict', 'stem_log/samples/samples-2020-12-29/sample_dict.pkl', '--names', 'non']
+sample_dict_path	: stem_log/samples/samples-2020-12-29/sample_dict.pkl
+samples	: {'inflating': 1042, 'shrinking': 1022, 'baunded': 1362, 'non': 1036}
+names	: ['non']
+> split samples into {'non'} and {'shrinking', 'inflating', 'baunded'}
+part_a	: {'non': 1036}
+part_b	: {'inflating': 1042, 'shrinking': 1022, 'baunded': 1362}
+> dump
+> end program
