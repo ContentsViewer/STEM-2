@@ -53,29 +53,35 @@ def main(args):
     print(f'sample_dict\t: {dict_each_length(sample_dict)}')
     print(f'frame_sampling_rate\t: {args.frame_sampling_rate}')
 
+    print(f'> dump sample dict')
+    with (output_dir / 'sample_dict.pkl').open('wb') as file:
+        pickle.dump(sample_dict, file)
+
     plot_shape = [math.ceil(len(sample_dict) / 2), 2]
     
-    for frame_idx in range(args.n_samples):
-        print(f'> plot frame {frame_idx} / {args.n_samples}')
-        fig = plt.figure()
+    # for frame_idx in range(args.n_samples):
+    #     print(f'> plot frame {frame_idx} / {args.n_samples}')
+    #     fig = plt.figure()
         
-        share_ax = None
-        for plot_idx, (name, frames) in enumerate(sample_dict.items()):
-            subplot = fig.add_subplot(*plot_shape, plot_idx+1, sharey=share_ax)
-            share_ax = subplot
-            subplot.set_title(name)
-            subplot.set_xlabel('Time (s)')
-            frame = frames[frame_idx]
-            subplot.plot(np.arange(len(frame))/args.frame_sampling_rate,  frame)
+    #     share_ax = None
+    #     for plot_idx, (name, frames) in enumerate(sample_dict.items()):
+    #         subplot = fig.add_subplot(*plot_shape, plot_idx+1, sharey=share_ax)
+    #         share_ax = subplot
+    #         subplot.set_title(name)
+    #         subplot.set_xlabel('Time (s)')
+    #         frame = frames[frame_idx]
+    #         subplot.plot(np.arange(len(frame))/args.frame_sampling_rate,  frame)
         
-        fig.tight_layout()
-        plt.savefig(output_dir / f"samples-{frame_idx}.png")
-        plt.close()
+    #     fig.tight_layout()
+    #     plt.savefig(output_dir / f"samples-{frame_idx}.png")
+    #     plt.close()
 
     print('> embeding')
     emb_dict = {}
     for name, frames in sample_dict.items():
         emb_dict[name] = model(frames)
+    
+    xticks = list(range(1, len(emb_dict) + 1))
     
     fig_idx = 0
     for anchor_name, anchor_embs in emb_dict.items():
@@ -102,9 +108,12 @@ def main(args):
 
                 print(f'mean\t: {mean}\t; std\t: {std}\t; {comp_name}')
         
-        ax.violinplot(means.values())
+        ax.violinplot(means.values(), showmeans=True)
+        ax.set_xticks(xticks)
+        ax.set_xticklabels(means.keys())
+        ax.set_ylabel('Distance')
         fig.savefig(output_dir / f"{fig_idx}-{anchor_name}.png")
-        fig_idx = fig_idx+1
+        fig_idx = fig_idx + 1
         plt.show()
 
         
