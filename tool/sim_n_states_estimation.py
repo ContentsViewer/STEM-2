@@ -24,12 +24,13 @@ context = {
 
 def main(args):
 
-    context['output_dir'] = stem_utils.STEM_CONSTANTS.STEM_LOG_DIR / 'sim_n_states_estimation' / std_file_utils.get_unique_log_dir()
+    context['output_dir'] = stem_utils.STEM_CONSTANTS.STEM_LOG_DIR / pathlib.Path(__file__).stem / std_file_utils.get_unique_log_dir()
     context['output_dir'].mkdir(parents=True)
 
     sys.stdout = TeeLogger(context['output_dir'] / 'stdout.log')
 
     print(f'output_dir\t:{context["output_dir"]}')
+    print(f'sys.argv\t: {sys.argv}')
 
 
     sample_dict_path = pathlib.Path(args.sample_dict)
@@ -37,8 +38,6 @@ def main(args):
     with sample_dict_path.open('rb') as file:
         sample_dict = pickle.load(file)
 
-    
-    # print(np.linalg.norm(np.array(sample_dict['inflating'][0][0]) - np.array(sample_dict['inflating'][100][0])))
 
     print(f'samples\t:{dict_each_length(sample_dict)}')
 
