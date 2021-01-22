@@ -57,24 +57,25 @@ def main(args):
     with (output_dir / 'sample_dict.pkl').open('wb') as file:
         pickle.dump(sample_dict, file)
 
-    plot_shape = [math.ceil(len(sample_dict) / 2), 2]
-    
-    for frame_idx in range(args.n_samples):
-        print(f'> plot frame {frame_idx} / {args.n_samples}')
-        fig = plt.figure()
+    if args.plot_samples:
+        plot_shape = [math.ceil(len(sample_dict) / 2), 2]
         
-        share_ax = None
-        for plot_idx, (name, frames) in enumerate(sample_dict.items()):
-            subplot = fig.add_subplot(*plot_shape, plot_idx+1, sharey=share_ax)
-            share_ax = subplot
-            subplot.set_title(name)
-            subplot.set_xlabel('Time (s)')
-            frame = frames[frame_idx]
-            subplot.plot(np.arange(len(frame))/args.frame_sampling_rate,  frame)
-        
-        fig.tight_layout()
-        plt.savefig(output_dir / f"samples-{frame_idx}.png")
-        plt.close()
+        for frame_idx in range(args.n_samples):
+            print(f'> plot frame {frame_idx} / {args.n_samples}')
+            fig = plt.figure()
+            
+            share_ax = None
+            for plot_idx, (name, frames) in enumerate(sample_dict.items()):
+                subplot = fig.add_subplot(*plot_shape, plot_idx+1, sharey=share_ax)
+                share_ax = subplot
+                subplot.set_title(name)
+                subplot.set_xlabel('Time (s)')
+                frame = frames[frame_idx]
+                subplot.plot(np.arange(len(frame))/args.frame_sampling_rate,  frame)
+            
+            fig.tight_layout()
+            plt.savefig(output_dir / f"samples-{frame_idx}.png")
+            plt.close()
 
     print('> embeding')
     emb_dict = {}
@@ -159,6 +160,11 @@ def parse_arguments(argv):
         '--frame-sampling-rate',
         type=float,
         default=50
+    )
+
+    parser.add_argument(
+        '--plot-samples',
+        action='store_true'
     )
 
 

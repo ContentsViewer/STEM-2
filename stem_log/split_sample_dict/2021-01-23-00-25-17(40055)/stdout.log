@@ -1,0 +1,10 @@
+output_dir	: stem_log/split_sample_dict/2021-01-23-00-25-17(40055)
+sys.argv	: ['tool/split_sample_dict.py', '--sample-dict', 'stem_log/split_sample_dict/2021-01-06-17-25-03(33832)/sample_dict(baunded,non).pkl', '--names', 'baunded']
+sample_dict_path	: stem_log/split_sample_dict/2021-01-06-17-25-03(33832)/sample_dict(baunded,non).pkl
+samples	: {'baunded': 1362, 'non': 1036}
+names	: ['baunded']
+> split samples into {'baunded'} and {'non'}
+part_a	: {'baunded': 1362}
+part_b	: {'non': 1036}
+> dump
+> end program
