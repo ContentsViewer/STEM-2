@@ -57,8 +57,8 @@ def main(args):
     with (output_dir / 'sample_dict.pkl').open('wb') as file:
         pickle.dump(sample_dict, file)
 
+    plot_shape = [math.ceil(len(sample_dict) / 2), 2]
     if args.plot_samples:
-        plot_shape = [math.ceil(len(sample_dict) / 2), 2]
         
         for frame_idx in range(args.n_samples):
             print(f'> plot frame {frame_idx} / {args.n_samples}')
@@ -83,12 +83,11 @@ def main(args):
         emb_dict[name] = model(frames)
     
     xticks = list(range(1, len(emb_dict) + 1))
-    
-    fig_idx = 0
-    for anchor_name, anchor_embs in emb_dict.items():
-        print(f'anchor name\t: {anchor_name}')
+    fig = plt.figure()
+    share_ax = None
 
-        fig, ax = plt.subplots()
+    for plot_idx, (anchor_name, anchor_embs) in enumerate(emb_dict.items()):
+        print(f'anchor name\t: {anchor_name}')
 
         means = OrderedDict()
         stds = OrderedDict()
@@ -109,13 +108,17 @@ def main(args):
 
                 print(f'mean\t: {mean}\t; std\t: {std}\t; {comp_name}')
         
-        ax.violinplot(means.values(), showmeans=True)
-        ax.set_xticks(xticks)
-        ax.set_xticklabels(means.keys())
-        ax.set_ylabel('Distance')
-        fig.savefig(output_dir / f"{fig_idx}-{anchor_name}.png")
-        fig_idx = fig_idx + 1
-        plt.show()
+        subplot = fig.add_subplot(*plot_shape, plot_idx + 1, sharey=share_ax)
+        share_ax = subplot
+        subplot.violinplot(means.values(), showmeans=True)
+        subplot.set_title(anchor_name)
+        subplot.set_xticks(xticks)
+        subplot.set_xticklabels(means.keys())
+        subplot.set_ylabel('Distance')
+    
+    fig.tight_layout()
+    fig.savefig(output_dir / f"result.png")
+    plt.show()
 
         
 
