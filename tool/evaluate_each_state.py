@@ -59,22 +59,22 @@ def main(args):
 
     plot_shape = [math.ceil(len(sample_dict) / 2), 2]
     
-    # for frame_idx in range(args.n_samples):
-    #     print(f'> plot frame {frame_idx} / {args.n_samples}')
-    #     fig = plt.figure()
+    for frame_idx in range(args.n_samples):
+        print(f'> plot frame {frame_idx} / {args.n_samples}')
+        fig = plt.figure()
         
-    #     share_ax = None
-    #     for plot_idx, (name, frames) in enumerate(sample_dict.items()):
-    #         subplot = fig.add_subplot(*plot_shape, plot_idx+1, sharey=share_ax)
-    #         share_ax = subplot
-    #         subplot.set_title(name)
-    #         subplot.set_xlabel('Time (s)')
-    #         frame = frames[frame_idx]
-    #         subplot.plot(np.arange(len(frame))/args.frame_sampling_rate,  frame)
+        share_ax = None
+        for plot_idx, (name, frames) in enumerate(sample_dict.items()):
+            subplot = fig.add_subplot(*plot_shape, plot_idx+1, sharey=share_ax)
+            share_ax = subplot
+            subplot.set_title(name)
+            subplot.set_xlabel('Time (s)')
+            frame = frames[frame_idx]
+            subplot.plot(np.arange(len(frame))/args.frame_sampling_rate,  frame)
         
-    #     fig.tight_layout()
-    #     plt.savefig(output_dir / f"samples-{frame_idx}.png")
-    #     plt.close()
+        fig.tight_layout()
+        plt.savefig(output_dir / f"samples-{frame_idx}.png")
+        plt.close()
 
     print('> embeding')
     emb_dict = {}
