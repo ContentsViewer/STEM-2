@@ -1,0 +1,47 @@
+output_dir	: stem_log/evaluate_cluster/2021-01-23-12-43-14(57981)
+sys.argv	: ['tool/evaluate_cluster.py', '--pretrained-model', 'stem_log/pre_train/2021-01-20-22-56-11(7299)/model-epoch-10-batch-10', '--dicts', 'stem_log/evaluate_each_state/2021-01-23-02-17-54(43003)/sample_dict.pkl']
+> load model
+model_path	: stem_log/pre_train/2021-01-20-22-56-11(7299)/model-epoch-10-batch-10
+Model: "model"
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #   
+=================================================================
+input_1 (InputLayer)         [(None, 100, 2)]          0         
+_________________________________________________________________
+LSTM (Model)                 (None, 128)               67072     
+_________________________________________________________________
+tf.math.l2_normalize (TFOpLa (None, 128)               0         
+=================================================================
+Total params: 67,072
+Trainable params: 67,072
+Non-trainable params: 0
+_________________________________________________________________
+dicts	: ['stem_log/evaluate_each_state/2021-01-23-02-17-54(43003)/sample_dict.pkl']
+> load dicts
+sample_dict	: {'inflating': 64, 'shrinking': 64, 'baunded': 64}
+> embeding
+anchor	: inflating; comp	: inflating
+len(distances)	: 4096
+anchor	: inflating; comp	: shrinking
+len(distances)	: 4096
+anchor	: inflating; comp	: baunded
+len(distances)	: 4096
+anchor	: shrinking; comp	: shrinking
+len(distances)	: 4096
+anchor	: shrinking; comp	: baunded
+len(distances)	: 4096
+anchor	: baunded; comp	: baunded
+len(distances)	: 4096
+anchor name	: inflating
+len(distances)	: 4096
+len(distances)	: 4096
+len(distances)	: 4096
+anchor name	: shrinking
+len(distances)	: 4096
+len(distances)	: 4096
+len(distances)	: 4096
+anchor name	: baunded
+len(distances)	: 4096
+len(distances)	: 4096
+len(distances)	: 4096
+> end program

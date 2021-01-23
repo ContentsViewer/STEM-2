@@ -1,0 +1,2 @@
+
+Inflating, Shrinking を学習したモデルの評価
