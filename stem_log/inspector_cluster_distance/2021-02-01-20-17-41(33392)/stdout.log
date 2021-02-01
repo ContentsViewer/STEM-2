@@ -1,0 +1,237 @@
+output_dir	: stem_log/inspector_cluster_distance/2021-02-01-20-17-41(33392)
+sys.argv	: ['tool/inspector_cluster_distance.py', '--pretrained-model', 'stem_log/pre_train/2021-01-20-22-56-11(7299)/model-epoch-10-batch-10', '--dicts', 'stem_log/evaluate_each_state/2021-01-23-02-17-54(43003)/sample_dict.pkl']
+> load model
+model_path	: stem_log/pre_train/2021-01-20-22-56-11(7299)/model-epoch-10-batch-10
+Model: "model"
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #   
+=================================================================
+input_1 (InputLayer)         [(None, 100, 2)]          0         
+_________________________________________________________________
+LSTM (Model)                 (None, 128)               67072     
+_________________________________________________________________
+tf.math.l2_normalize (TFOpLa (None, 128)               0         
+=================================================================
+Total params: 67,072
+Trainable params: 67,072
+Non-trainable params: 0
+_________________________________________________________________
+dicts	: ['stem_log/evaluate_each_state/2021-01-23-02-17-54(43003)/sample_dict.pkl']
+> load dicts
+sample_dict	: {'inflating': 64, 'shrinking': 64, 'baunded': 64}
+> embeding
+anchor name	: inflating
+anchor name	: shrinking
+anchor name	: baunded
+distances_map: 
+  anchor_name: inflating
+    comp_name: inflating
+      len(distances): 4096
+    comp_name: shrinking
+      len(distances): 4096
+    comp_name: baunded
+      len(distances): 4096
+  anchor_name: shrinking
+    comp_name: inflating
+      len(distances): 4096
+    comp_name: shrinking
+      len(distances): 4096
+    comp_name: baunded
+      len(distances): 4096
+  anchor_name: baunded
+    comp_name: inflating
+      len(distances): 4096
+    comp_name: shrinking
+      len(distances): 4096
+    comp_name: baunded
+      len(distances): 4096
+> READY
+> [0;32m/home/ken/osaka-univ/hosoda-lab/softhand-work/project/STEM-2/tool/inspector_cluster_distance.py[0m(72)[0;36mmain[0;34m()[0m
+[0;32m     70 [0;31m    [0mprint[0m[0;34m([0m[0;34m'> READY'[0m[0;34m)[0m[0;34m[0m[0;34m[0m[0m
+[0m[0;32m     71 [0;31m    [0;32mfrom[0m [0mIPython[0m[0;34m.[0m[0mcore[0m[0;34m.[0m[0mdebugger[0m [0;32mimport[0m [0mPdb[0m[0;34m;[0m [0mPdb[0m[0;34m([0m[0;34m)[0m[0;34m.[0m[0mset_trace[0m[0;34m([0m[0;34m)[0m[0;34m[0m[0;34m[0m[0m
+[0m[0;32m---> 72 [0;31m    [0mprint[0m[0;34m([0m[0;34m'> end program'[0m[0;34m)[0m[0;34m[0m[0;34m[0m[0m
+[0m[0;32m     73 [0;31m[0;34m[0m[0m
+[0m[0;32m     74 [0;31m[0;34m[0m[0m
+[0m
+ipdb> > evaluate_percentile
+anchor_name	: inflating
+thres	: 0.04417980834841728
+comp_name	: inflating
+count(distances<0.04417980834841728)	: 2864
+2864/4096	: 0.69921875
+comp_name	: shrinking
+count(distances<0.04417980834841728)	: 435
+435/4096	: 0.106201171875
+comp_name	: baunded
+count(distances<0.04417980834841728)	: 838
+838/4096	: 0.20458984375
+ipdb> > evaluate_percentile
+anchor_name	: shrinking
+thres	: 0.04510718584060669
+comp_name	: inflating
+count(distances<0.04510718584060669)	: 457
+457/4096	: 0.111572265625
+comp_name	: shrinking
+count(distances<0.04510718584060669)	: 2864
+2864/4096	: 0.69921875
+comp_name	: baunded
+count(distances<0.04510718584060669)	: 166
+166/4096	: 0.04052734375
+ipdb> > evaluate_percentile
+anchor_name	: baunded
+thres	: 0.020492231473326683
+comp_name	: inflating
+count(distances<0.020492231473326683)	: 4
+4/4096	: 0.0009765625
+comp_name	: shrinking
+count(distances<0.020492231473326683)	: 0
+0/4096	: 0.0
+comp_name	: baunded
+count(distances<0.020492231473326683)	: 2842
+2842/4096	: 0.69384765625
+ipdb> *** TypeError: list indices must be integers or slices, not str
+ipdb> 0.035790626
+ipdb> *** TypeError: list indices must be integers or slices, not str
+ipdb> 0.03837236
+ipdb> 0.01700051
+ipdb> > evaluate_percentile
+anchor_name	: inflating
+thres	: 0.048428986221551895
+comp_name	: inflating
+count(distances<0.048428986221551895)	: 3048
+3048/4096	: 0.744140625
+comp_name	: shrinking
+count(distances<0.048428986221551895)	: 513
+513/4096	: 0.125244140625
+comp_name	: baunded
+count(distances<0.048428986221551895)	: 1119
+1119/4096	: 0.273193359375
+ipdb> > evaluate_percentile
+anchor_name	: shrinking
+thres	: 0.053722355514764786
+comp_name	: inflating
+count(distances<0.053722355514764786)	: 677
+677/4096	: 0.165283203125
+comp_name	: shrinking
+count(distances<0.053722355514764786)	: 3056
+3056/4096	: 0.74609375
+comp_name	: baunded
+count(distances<0.053722355514764786)	: 387
+387/4096	: 0.094482421875
+ipdb> > evaluate_percentile
+anchor_name	: baunded
+thres	: 0.021665846928954124
+comp_name	: inflating
+count(distances<0.021665846928954124)	: 4
+4/4096	: 0.0009765625
+comp_name	: shrinking
+count(distances<0.021665846928954124)	: 0
+0/4096	: 0.0
+comp_name	: baunded
+count(distances<0.021665846928954124)	: 3058
+3058/4096	: 0.74658203125
+ipdb> 
+
+
+evaluate_percentile(70, distances_map, 'inflating')                                                                                                                                                                
+ipdb> > evaluate_percentile                                                                                                                                                                                        
+anchor_name     : inflating                                                                                                                                                                                        
+thres   : 0.04417980834841728                                                                                                                                                                                      
+comp_name       : inflating                                                                                                                                                                                        
+count(distances<0.04417980834841728)    : 2864                                                                                                                                                                     
+2864/4096       : 0.69921875                                                                                                                                                                                       
+comp_name       : shrinking                                                                                                                                                                                        
+count(distances<0.04417980834841728)    : 435                                                                                                                                                                      
+435/4096        : 0.106201171875                                                                                                                                                                                   
+comp_name       : baunded                                                                                                                                                                                          
+count(distances<0.04417980834841728)    : 838                                                                                                                                                                      
+838/4096        : 0.20458984375                                                                                                                                                                                    
+evaluate_percentile(70, distances_map, 'shrinking')                                                                                                                                                                
+ipdb> > evaluate_percentile                                                                                                                                                                                        
+anchor_name     : shrinking                                                                                                                                                                                        
+thres   : 0.04510718584060669                                                                                                                                                                                      
+comp_name       : inflating                                                                                                                                                                                        
+count(distances<0.04510718584060669)    : 457                                                                                                                                                                      
+457/4096        : 0.111572265625                                                                                                                                                                                   
+comp_name       : shrinking                                                                                                                                                                                        
+count(distances<0.04510718584060669)    : 2864                                                                                                                                                                     
+2864/4096       : 0.69921875                                                                                                                                                                                       
+comp_name       : baunded                                                                                                                                                                                          
+count(distances<0.04510718584060669)    : 166                                                                                                                                                                      
+166/4096        : 0.04052734375                                                                                                                                                                                    
+evaluate_percentile(70, distances_map, 'baunded')                                                                                                                                                                  
+ipdb> > evaluate_percentile                                                                                                                                                                                        
+anchor_name     : baunded                                                                                                                                                                                          
+thres   : 0.020492231473326683                                                                                                                                                                                     
+comp_name       : inflating                                                                                                                                                                                        
+count(distances<0.020492231473326683)   : 4                                                                                                                                                                        
+4/4096  : 0.0009765625                                                                                                                                                                                             
+comp_name       : shrinking                                                                                                                                                                                        
+count(distances<0.020492231473326683)   : 0                                                                                                                                                                        
+0/4096  : 0.0                                                                                                                                                                                                      
+comp_name       : baunded                                                                                                                                                                                          
+count(distances<0.020492231473326683)   : 2842                                                                                                                                                                     
+2842/4096       : 0.69384765625                                                                                                                                                                                    
+np.mean(distances['inflating']['inflating'])                                                                                                                                                                       
+ipdb> *** TypeError: list indices must be integers or slices, not str                                                                                                                                              
+np.mean(distances_map['inflating']['inflating'])                                                                                                                                                                   
+ipdb> 0.035790626                                                                                                                                                                                                  
+np.mean(distances['shrinking']['shrinking'])                                                                                                                                                                       
+ipdb> *** TypeError: list indices must be integers or slices, not str                                                                                                                                              
+np.mean(distances_map['shrinking']['shrinking'])                                                                                                                                                                   
+ipdb> 0.03837236                                                                                                                                                                                                   
+np.mean(distances_map['baunded']['baunded'])                                                                                                                                                                       
+ipdb> 0.01700051
+evaluate_percentile(75, distances_map, 'inflating')
+ipdb> > evaluate_percentile
+anchor_name     : inflating
+thres   : 0.048428986221551895
+comp_name       : inflating
+count(distances<0.048428986221551895)   : 3048
+3048/4096       : 0.744140625
+comp_name       : shrinking
+count(distances<0.048428986221551895)   : 513
+513/4096        : 0.125244140625
+comp_name       : baunded
+count(distances<0.048428986221551895)   : 1119
+1119/4096       : 0.273193359375
+evaluate_percentile(75, distances_map, 'shrinking')
+ipdb> > evaluate_percentile
+anchor_name     : shrinking
+thres   : 0.053722355514764786
+comp_name       : inflating
+count(distances<0.053722355514764786)   : 677
+677/4096        : 0.165283203125
+comp_name       : shrinking
+count(distances<0.053722355514764786)   : 3056
+3056/4096       : 0.74609375
+comp_name       : baunded
+count(distances<0.053722355514764786)   : 387
+387/4096        : 0.094482421875
+evaluate_percentile(75, distances_map, 'baunded')
+ipdb> > evaluate_percentile
+anchor_name     : baunded
+thres   : 0.021665846928954124
+comp_name       : inflating
+count(distances<0.021665846928954124)   : 4
+4/4096  : 0.0009765625
+comp_name       : shrinking
+count(distances<0.021665846928954124)   : 0
+0/4096  : 0.0
+comp_name       : baunded
+count(distances<0.021665846928954124)   : 3058
+3058/4096       : 0.74658203125
+q
+Traceback (most recent call last):
+  File "tool/inspector_cluster_distance.py", line 113, in <module>
+    main(parse_arguments(sys.argv[1:]))
+  File "tool/inspector_cluster_distance.py", line 72, in main
+    print('> end program')
+  File "tool/inspector_cluster_distance.py", line 72, in main
+    print('> end program')
+  File "/usr/lib/python3.8/bdb.py", line 88, in trace_dispatch
+    return self.dispatch_line(frame)
+  File "/usr/lib/python3.8/bdb.py", line 113, in dispatch_line
+    if self.quitting: raise BdbQuit
+bdb.BdbQuit
+ipdb> %   

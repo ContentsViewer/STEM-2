@@ -1,0 +1,130 @@
+output_dir	: stem_log/inspector_cluster_distance/2021-02-01-19-30-12(30592)
+sys.argv	: ['tool/inspector_cluster_distance.py', '--pretrained-model', 'stem_log/pre_train/2021-01-20-22-56-11(7299)/model-epoch-10-batch-10', '--dicts', 'stem_log/evaluate_each_state/2021-01-23-02-17-54(43003)/sample_dict.pkl']
+> load model
+model_path	: stem_log/pre_train/2021-01-20-22-56-11(7299)/model-epoch-10-batch-10
+Model: "model"
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #   
+=================================================================
+input_1 (InputLayer)         [(None, 100, 2)]          0         
+_________________________________________________________________
+LSTM (Model)                 (None, 128)               67072     
+_________________________________________________________________
+tf.math.l2_normalize (TFOpLa (None, 128)               0         
+=================================================================
+Total params: 67,072
+Trainable params: 67,072
+Non-trainable params: 0
+_________________________________________________________________
+dicts	: ['stem_log/evaluate_each_state/2021-01-23-02-17-54(43003)/sample_dict.pkl']
+> load dicts
+sample_dict	: {'inflating': 64, 'shrinking': 64, 'baunded': 64}
+> embeding
+anchor name	: inflating
+anchor name	: shrinking
+anchor name	: baunded
+distances_map: 
+  anchor_name: inflating
+    comp_name: inflating
+      len(distances): 4096
+    comp_name: shrinking
+      len(distances): 4096
+    comp_name: baunded
+      len(distances): 4096
+  anchor_name: shrinking
+    comp_name: inflating
+      len(distances): 4096
+    comp_name: shrinking
+      len(distances): 4096
+    comp_name: baunded
+      len(distances): 4096
+  anchor_name: baunded
+    comp_name: inflating
+      len(distances): 4096
+    comp_name: shrinking
+      len(distances): 4096
+    comp_name: baunded
+      len(distances): 4096
+> READY
+> [0;32m/home/ken/osaka-univ/hosoda-lab/softhand-work/project/STEM-2/tool/inspector_cluster_distance.py[0m(70)[0;36mmain[0;34m()[0m
+[0;32m     68 [0;31m    [0mprint[0m[0;34m([0m[0;34m'> READY'[0m[0;34m)[0m[0;34m[0m[0;34m[0m[0m
+[0m[0;32m     69 [0;31m    [0;32mfrom[0m [0mIPython[0m[0;34m.[0m[0mcore[0m[0;34m.[0m[0mdebugger[0m [0;32mimport[0m [0mPdb[0m[0;34m;[0m [0mPdb[0m[0;34m([0m[0;34m)[0m[0;34m.[0m[0mset_trace[0m[0;34m([0m[0;34m)[0m[0;34m[0m[0;34m[0m[0m
+[0m[0;32m---> 70 [0;31m    [0mprint[0m[0;34m([0m[0;34m'> end program'[0m[0;34m)[0m[0;34m[0m[0;34m[0m[0m
+[0m[0;32m     71 [0;31m[0;34m[0m[0m
+[0m[0;32m     72 [0;31m[0;34m[0m[0m
+[0m
+ipdb> 0.035790626
+ipdb> *** SyntaxError: unexpected EOF while parsing
+ipdb> 0.04417980834841728
+ipdb> 2864
+ipdb> 0.69921875
+ipdb> ipdb> 435
+ipdb> 0.106201171875
+ipdb> *** SyntaxError: unexpected EOF while parsing
+ipdb> 838
+ipdb> 0.20458984375
+ipdb> ipdb> 0.04510718584060669
+ipdb> 2864
+ipdb> 0.69921875
+ipdb> 457
+ipdb> 0.111572265625
+ipdb> 166
+ipdb> 0.04052734375
+ipdb> 0.03837236
+ipdb> 0.01700051
+ipdb> ipdb> 0.020492231473326683
+ipdb> 4
+ipdb> 0.0009765625
+ipdb> 0
+ipdb> 
+
+
+print(np.mean(distances_map['inflating']['inflating']))                                                                                                                                                            
+ipdb> 0.035790626                                                                                                                                                                                                  
+print(np.percentile(np.array(distances_map['inflating']['inflating']),70)                                                                                                                                          
+ipdb> *** SyntaxError: unexpected EOF while parsing                                                                                                                                                                
+print(np.percentile(np.array(distances_map['inflating']['inflating']),70))                                                                                                                                         
+ipdb> 0.04417980834841728                                                                                                                                                                                          
+print(np.count_nonzero(np.array(distances_map['inflating']['inflating']) < 0.04417980834841728))                                                                                                                   
+ipdb> 2864                                                                                                                                                                                                         
+print(2864/4096)                                                                                                                                                                                                   
+ipdb> 0.69921875                                                                                                                                                                                                   
+thres=0.04417980834841728                                                                                                                                                                                          
+print(np.count_nonzero(np.array(distances_map['inflating']['shrinking']) < thres))                                                                                                                                 
+ipdb> ipdb> 435                                     
+print(435/4096)                                     
+ipdb> 0.106201171875                                
+print(np.count_nonzero(np.array(distances_map['inflating']['baunded'] < thres))                                                                                                                                    
+ipdb> *** SyntaxError: unexpected EOF while parsing                                                      
+print(np.count_nonzero(np.array(distances_map['inflating']['baunded']) < thres))                                                                                                                                   
+ipdb> 838                                           
+print(838/4096)                                     
+ipdb> 0.20458984375                                 
+thres=np.percentile(np.array(distances_map['shrinking']['shrinking']),70)
+print(thres)
+ipdb> ipdb> 0.04510718584060669
+print(np.count_nonzero(np.array(distances_map['shrinking']['shrinking'])<thres))
+ipdb> 2864
+print(2864/4096)
+ipdb> 0.69921875
+print(np.count_nonzero(np.array(distances_map['shrinking']['inflating'])<thres))
+ipdb> 457
+print(457/4096)
+ipdb> 0.111572265625
+print(np.count_nonzero(np.array(distances_map['shrinking']['baunded'])<thres))
+ipdb> 166
+print(166/4096)
+ipdb> 0.04052734375
+print(np.mean(distances_map['shrinking']['shrinking']))
+ipdb> 0.03837236
+print(np.mean(distances_map['baunded']['baunded']))
+ipdb> 0.01700051
+thres=np.percentile(np.array(distances_map['baunded']['baunded']),70)
+print(thres)
+ipdb> ipdb> 0.020492231473326683
+print(np.count_nonzero(np.array(distances_map['baunded']['inflating'])<thres))
+ipdb> 4
+print(4/4096)
+ipdb> 0.0009765625
+print(np.count_nonzero(np.array(distances_map['baunded']['shrinking'])<thres))
+ipdb> 0

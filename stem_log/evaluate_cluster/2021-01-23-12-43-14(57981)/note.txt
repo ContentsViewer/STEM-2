@@ -1,0 +1,3 @@
+修論結果画像に使用
+
+Inflating, Shrinking, Bounded を学習したモデルの評価
